@@ -37,14 +37,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		urlString := string(body)
-		shortUrl, err := shortenUrl(urlString)
+		shortURL, err := shortenURL(urlString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, err = w.Write([]byte(shortUrl))
+		_, err = w.Write([]byte(shortURL))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -57,11 +57,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		id := path[1:]
-		longUrl := base[id]
-		if longUrl == "" {
+		longURL := base[id]
+		if longURL == "" {
 			http.Error(w, "А nonexistent ID was requested", http.StatusBadRequest)
 		}
-		w.Header().Set("Location", longUrl)
+		w.Header().Set("Location", longURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 
 	default:
@@ -69,7 +69,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func shortenUrl(urlString string) (shortUrl string, err error) {
+func shortenURL(urlString string) (shortURL string, err error) {
 	if urlString == "" {
 		return "", errors.New("empty URL string")
 	}
@@ -85,8 +85,8 @@ func shortenUrl(urlString string) (shortUrl string, err error) {
 		}
 	}
 
-	shortUrl = "http://localhost:8080/" + id
-	return shortUrl, err
+	shortURL = "http://localhost:8080/" + id
+	return shortURL, err
 }
 
 func initRand() {

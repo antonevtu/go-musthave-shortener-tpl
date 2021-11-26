@@ -36,13 +36,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		urlString := string(body)
+
 		shortURL, err := shortenURL(urlString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write([]byte(shortURL))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

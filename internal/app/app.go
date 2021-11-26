@@ -24,7 +24,6 @@ func Run() {
 	initRand()
 	http.HandleFunc("/", handler)
 	addr := "localhost:8080"
-	log.Println("Запуск сервера:", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 

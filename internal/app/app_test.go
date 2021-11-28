@@ -37,6 +37,8 @@ func TestHandlerMethodNotAllowed(t *testing.T) {
 			h := http.HandlerFunc(handler(tt.base))
 			h.ServeHTTP(w, request)
 			result := w.Result()
+			err := result.Body.Close()
+			require.NoError(t, err)
 
 			require.Equal(t, tt.wantStatusCode, result.StatusCode)
 		})
@@ -160,6 +162,8 @@ func TestHandlerExistingId(t *testing.T) {
 			h = http.HandlerFunc(handler(tt.base))
 			h.ServeHTTP(w, request)
 			result = w.Result()
+			err = result.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.getStatusCode, result.StatusCode)
 			assert.Equal(t, tt.want.location, result.Header.Get("Location"))

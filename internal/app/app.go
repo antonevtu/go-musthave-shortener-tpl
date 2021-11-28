@@ -56,7 +56,7 @@ func handler(base baseT) http.HandlerFunc {
 			}
 			id := path[1:]
 			longURL, ok := base[id]
-			if ok == false {
+			if !ok {
 				http.Error(w, "А nonexistent ID was requested", http.StatusBadRequest)
 			}
 			w.Header().Set("Location", longURL)
@@ -74,7 +74,7 @@ func shortenURL(urlString string, base baseT) (shortURL string, err error) {
 	defer baseLock.Unlock()
 	for {
 		id = randStringRunes(idLen)
-		if _, ok := base[id]; ok == false {
+		if _, ok := base[id]; !ok {
 			base[id] = urlString
 			break
 		}

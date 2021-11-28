@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const addr = "http://localhost:8080"
+const addr = "localhost:8080"
 const idLen = 5
 
 type baseT map[string]string
@@ -79,7 +79,7 @@ func shortenURL(urlString string, base baseT) (shortURL string, err error) {
 			break
 		}
 	}
-	shortURL = addr + "/" + id
+	shortURL = "http://" + addr + "/" + id
 	return shortURL, err
 }
 

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"io"
 	"log"
 	"math/rand"
@@ -10,82 +9,77 @@ import (
 	"time"
 )
 
+const addr = "http://localhost:8080"
 const idLen = 5
 
 type baseT map[string]string
 
-var base baseT
 var baseLock sync.Mutex
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
 func Run() {
-
-	base = make(baseT, 100)
+	base := make(baseT, 100)
 	initRand()
-	http.HandleFunc("/", handler)
-	addr := "localhost:8080"
+	http.HandleFunc("/", handler(base))
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		urlString := string(body)
+func handler(base baseT) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			urlString := string(body)
 
-		shortURL, err := shortenURL(urlString)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(shortURL))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+			shortURL, err := shortenURL(urlString, base)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusCreated)
+			_, err = w.Write([]byte(shortURL))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
-	case "GET":
-		path := r.URL.Path
-		if len(path) < idLen+1 {
-			http.Error(w, "The ID is missing", http.StatusBadRequest)
-			return
-		}
-		id := path[1:]
-		longURL := base[id]
-		if longURL == "" {
-			http.Error(w, "А nonexistent ID was requested", http.StatusBadRequest)
-		}
-		w.Header().Set("Location", longURL)
-		w.WriteHeader(http.StatusTemporaryRedirect)
+		case "GET":
+			path := r.URL.Path
+			if len(path) < idLen+1 {
+				http.Error(w, "The ID is missing", http.StatusBadRequest)
+				return
+			}
+			id := path[1:]
+			longURL, ok := base[id]
+			if ok == false {
+				http.Error(w, "А nonexistent ID was requested", http.StatusBadRequest)
+			}
+			w.Header().Set("Location", longURL)
+			w.WriteHeader(http.StatusTemporaryRedirect)
 
-	default:
-		http.Error(w, "Only POST or GET requests are allowed!", http.StatusMethodNotAllowed)
+		default:
+			http.Error(w, "Only POST or GET requests are allowed!", http.StatusMethodNotAllowed)
+		}
 	}
 }
 
-func shortenURL(urlString string) (shortURL string, err error) {
-	if urlString == "" {
-		return "", errors.New("empty URL string")
-	}
-
+func shortenURL(urlString string, base baseT) (shortURL string, err error) {
 	var id string
 	baseLock.Lock()
 	defer baseLock.Unlock()
 	for {
 		id = randStringRunes(idLen)
-		if base[id] == "" {
+		if _, ok := base[id]; ok == false {
 			base[id] = urlString
 			break
 		}
 	}
-
-	shortURL = "http://localhost:8080/" + id
+	shortURL = addr + "/" + id
 	return shortURL, err
 }
 

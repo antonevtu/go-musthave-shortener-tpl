@@ -33,13 +33,15 @@ func TestRouter(t *testing.T) {
 	defer ts.Close()
 
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
-	resp, body := testRequest(t, ts.URL, "POST", bytes.NewBufferString(longURL))
-	_ = body
+	resp, shortURL := testRequest(t, ts.URL, "POST", bytes.NewBufferString(longURL))
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	//shortURL := body
-	//resp, body = testRequest(t, shortURL, "GET", nil)
-	//assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+	shortURL1 := shortURL + "xxx"
+	resp, _ = testRequest(t, shortURL1, "GET", nil)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	resp, _ = testRequest(t, shortURL, "PUT", nil)
+	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 
 	resp.Body.Close()
 }

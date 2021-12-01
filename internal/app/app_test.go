@@ -44,6 +44,7 @@ func TestRouter(t *testing.T) {
 
 	// Check redirection by existing ID
 	resp, _ = testRequest(t, shortURL, "GET", nil)
+	_ = resp.Body.Close() // Почему это требует автотест?
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	longURLRecovered := resp.Header.Get("Location")
 	assert.Equal(t, longURL, longURLRecovered)
@@ -51,10 +52,12 @@ func TestRouter(t *testing.T) {
 	// Check StatusBadRequest for non existed ID
 	shortURL1 := shortURL + "xxx"
 	resp, _ = testRequest(t, shortURL1, "GET", nil)
+	_ = resp.Body.Close() // Почему это требует автотест?
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	// Check not allowed method error
 	resp, _ = testRequest(t, shortURL, "PUT", nil)
+	_ = resp.Body.Close() // Почему это требует автотест?
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 
 	_ = resp.Body.Close() // Почему это требует автотест?

@@ -40,4 +40,6 @@ func TestRouter(t *testing.T) {
 	//shortURL := body
 	//resp, body = testRequest(t, shortURL, "GET", nil)
 	//assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+
+	resp.Body.Close()
 }

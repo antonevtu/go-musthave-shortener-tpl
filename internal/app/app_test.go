@@ -12,10 +12,15 @@ import (
 )
 
 func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Response, string) {
+	client := &http.Client{}
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
 	req, err := http.NewRequest(method, url, body)
 	require.NoError(t, err)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 
 	respBody, err := ioutil.ReadAll(resp.Body)
@@ -32,16 +37,25 @@ func TestRouter(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
+	// Create ID
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
 	resp, shortURL := testRequest(t, ts.URL, "POST", bytes.NewBufferString(longURL))
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
+	// Check redirection by existing ID
+	resp, _ = testRequest(t, shortURL, "GET", nil)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+	longURLRecovered := resp.Header.Get("Location")
+	assert.Equal(t, longURL, longURLRecovered)
+
+	// Check StatusBadRequest for non existed ID
 	shortURL1 := shortURL + "xxx"
 	resp, _ = testRequest(t, shortURL1, "GET", nil)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
+	// Check not allowed method error
 	resp, _ = testRequest(t, shortURL, "PUT", nil)
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 
-	resp.Body.Close()
+	_ = resp.Body.Close() // Почему это требует автотест?
 }

@@ -40,6 +40,7 @@ func TestRouter(t *testing.T) {
 	// Create ID
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
 	resp, shortURL := testRequest(t, ts.URL, "POST", bytes.NewBufferString(longURL))
+	_ = resp.Body.Close() // Почему это требует автотест?
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Check redirection by existing ID

@@ -60,6 +60,4 @@ func TestRouter(t *testing.T) {
 	resp, _ = testRequest(t, shortURL, "PUT", nil)
 	_ = resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-
-	_ = resp.Body.Close()
 }

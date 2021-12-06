@@ -2,6 +2,8 @@ package app
 
 import (
 	"bytes"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -32,10 +34,10 @@ func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Respon
 }
 
 func TestRouter(t *testing.T) {
-	var repo = Repository{
+	var repo = repository.Repository{
 		Storage: make(map[string]string),
 	}
-	r := NewRouter(&repo)
+	r := handlers.NewRouter(&repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

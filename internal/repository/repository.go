@@ -20,7 +20,7 @@ func (r *Repository) Load(id string) (string, error) {
 	if ok {
 		return longURL, nil
 	} else {
-		return longURL, errors.New("А nonexistent ID was requested")
+		return longURL, errors.New("a non-existent ID was requested")
 	}
 }
 
@@ -36,7 +36,7 @@ func (r *Repository) Store(url string) (string, error) {
 			return id, nil
 		}
 	}
-	return "", errors.New("Can't generate random ID")
+	return "", errors.New("can't generate random ID")
 }
 
 func randStringRunes(n int) string {

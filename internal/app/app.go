@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"io"
@@ -12,20 +13,30 @@ import (
 )
 
 const addr = "localhost:8080"
-const idLen = 5
 
-type Storage map[string]string
+type Repository struct {
+	Storage     storageT
+	storageLock sync.Mutex
+}
+type storageT map[string]string
 
-var storageLock sync.Mutex
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+type Repositorier interface {
+	Store(url string) (string, error)
+	Load(shortURL string) (string, error)
+}
 
 func Run() {
-	storage := make(Storage, 100)
-	r := NewRouter(storage)
+	var repository Repository
+	repository.Init()
+	r := NewRouter(&repository)
 	log.Fatal(http.ListenAndServe(addr, r))
 }
 
-func NewRouter(base Storage) chi.Router {
+func (r *Repository) Init() {
+	r.Storage = make(storageT, 100)
+}
+
+func NewRouter(repository Repositorier) chi.Router {
 	// Определяем роутер chi
 	r := chi.NewRouter()
 
@@ -37,13 +48,13 @@ func NewRouter(base Storage) chi.Router {
 
 	// создадим суброутер, который будет содержать две функции
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlerShortenURL(base))
-		r.Get("/{id}", handlerRecoverURL(base))
+		r.Post("/", handlerStoreURL(repository))
+		r.Get("/{id}", handlerLoadURL(repository))
 	})
 	return r
 }
 
-func handlerShortenURL(base Storage) http.HandlerFunc {
+func handlerStoreURL(repository Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		body, err := io.ReadAll(r.Body)
@@ -53,7 +64,10 @@ func handlerShortenURL(base Storage) http.HandlerFunc {
 		}
 		urlString := string(body)
 
-		id := shortenURL(urlString, base)
+		id, err := repository.Store(urlString)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		shortURL := "http://" + r.Host + "/" + id
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -66,34 +80,46 @@ func handlerShortenURL(base Storage) http.HandlerFunc {
 	}
 }
 
-func handlerRecoverURL(base Storage) http.HandlerFunc {
+func handlerLoadURL(repository Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		storageLock.Lock()
-		defer storageLock.Unlock()
 		id := chi.URLParam(r, "id")
-		longURL, ok := base[id]
-		if !ok {
-			http.Error(w, "А nonexistent ID was requested", http.StatusBadRequest)
+		longURL, err := repository.Load(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 		w.Header().Set("Location", longURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
 
-func shortenURL(urlString string, base Storage) (id string) {
-	storageLock.Lock()
-	defer storageLock.Unlock()
-	for {
-		id = randStringRunes(idLen)
-		if _, ok := base[id]; !ok {
-			base[id] = urlString
-			break
+func (r *Repository) Load(id string) (string, error) {
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
+	longURL, ok := r.Storage[id]
+	if ok {
+		return longURL, nil
+	} else {
+		return longURL, errors.New("А nonexistent ID was requested")
+	}
+}
+
+func (r *Repository) Store(url string) (string, error) {
+	const idLen = 5
+	const attemptsNumber = 10
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
+	for i := 0; i < attemptsNumber; i++ {
+		id := randStringRunes(idLen)
+		if _, ok := r.Storage[id]; !ok {
+			r.Storage[id] = url
+			return id, nil
 		}
 	}
-	return id
+	return "", errors.New("Can't generate random ID")
 }
 
 func randStringRunes(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
 	for i := range b {

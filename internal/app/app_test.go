@@ -34,10 +34,8 @@ func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Respon
 }
 
 func TestRouter(t *testing.T) {
-	var repo = repository.Repository{
-		Storage: make(map[string]string),
-	}
-	r := handlers.NewRouter(&repo)
+	repo := repository.New()
+	r := handlers.NewRouter(repo)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

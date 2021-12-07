@@ -8,7 +8,7 @@ import (
 )
 
 type Repository struct {
-	Storage     storageT
+	storage     storageT
 	storageLock sync.Mutex
 }
 type storageT map[string]string
@@ -16,7 +16,7 @@ type storageT map[string]string
 func (r *Repository) Load(id string) (string, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
-	longURL, ok := r.Storage[id]
+	longURL, ok := r.storage[id]
 	if ok {
 		return longURL, nil
 	} else {
@@ -31,8 +31,8 @@ func (r *Repository) Store(url string) (string, error) {
 	defer r.storageLock.Unlock()
 	for i := 0; i < attemptsNumber; i++ {
 		id := randStringRunes(idLen)
-		if _, ok := r.Storage[id]; !ok {
-			r.Storage[id] = url
+		if _, ok := r.storage[id]; !ok {
+			r.storage[id] = url
 			return id, nil
 		}
 	}
@@ -49,6 +49,8 @@ func randStringRunes(n int) string {
 	return string(b)
 }
 
-func (r *Repository) Init() {
-	r.Storage = make(storageT, 100)
+func New() *Repository {
+	return &Repository{
+		storage: make(storageT, 100),
+	}
 }

@@ -62,5 +62,4 @@ func Run() {
 	}
 
 	defer os.Exit(0)
-	return
 }

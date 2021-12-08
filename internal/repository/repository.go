@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+type Repositorier interface {
+	Store(url string) (string, error)
+	Load(shortURL string) (string, error)
+}
+
 type Repository struct {
 	storage     storageT
 	storageLock sync.Mutex

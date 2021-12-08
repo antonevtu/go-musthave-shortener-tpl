@@ -1,18 +1,14 @@
 package handlers
 
 import (
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"io"
 	"net/http"
 )
 
-type Repositorier interface {
-	Store(url string) (string, error)
-	Load(shortURL string) (string, error)
-}
-
-func NewRouter(base Repositorier) chi.Router {
+func NewRouter(repo repository.Repositorier) chi.Router {
 	// Определяем роутер chi
 	r := chi.NewRouter()
 
@@ -24,13 +20,13 @@ func NewRouter(base Repositorier) chi.Router {
 
 	// создадим суброутер, который будет содержать две функции
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlerStoreURL(base))
-		r.Get("/{id}", handlerLoadURL(base))
+		r.Post("/", handlerStoreURL(repo))
+		r.Get("/{id}", handlerLoadURL(repo))
 	})
 	return r
 }
 
-func handlerStoreURL(repository Repositorier) http.HandlerFunc {
+func handlerStoreURL(repo repository.Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		body, err := io.ReadAll(r.Body)
@@ -40,7 +36,7 @@ func handlerStoreURL(repository Repositorier) http.HandlerFunc {
 		}
 		urlString := string(body)
 
-		id, err := repository.Store(urlString)
+		id, err := repo.Store(urlString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -56,10 +52,10 @@ func handlerStoreURL(repository Repositorier) http.HandlerFunc {
 	}
 }
 
-func handlerLoadURL(repository Repositorier) http.HandlerFunc {
+func handlerLoadURL(repo repository.Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		longURL, err := repository.Load(id)
+		longURL, err := repo.Load(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}

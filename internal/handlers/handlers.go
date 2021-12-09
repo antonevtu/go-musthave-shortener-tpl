@@ -30,18 +30,28 @@ func NewRouter(repo repository.Repositorier) chi.Router {
 
 func handlerStoreURLJSON(repo repository.Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		type requestURL struct {
+			URL string `json:"url"`
+		}
 		type responseURL struct {
 			Result string `json:"result"`
 		}
 
-		err := r.ParseForm()
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
 		}
-		url := r.PostForm.Get("url")
 
-		id, err := repo.Store(url)
+		url := requestURL{}
+		err = json.Unmarshal(body, &url)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		if url.URL == "" {
+			http.Error(w, `no key "url" or empty request`, http.StatusBadRequest)
+		}
+
+		id, err := repo.Store(url.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

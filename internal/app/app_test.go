@@ -2,6 +2,8 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -33,34 +35,57 @@ func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Respon
 	return resp, string(respBody)
 }
 
-//func TestJSONAPI(t *testing.T) {
-//	repo := repository.New()
-//	r := handlers.NewRouter(repo)
-//	ts := httptest.NewServer(r)
-//	defer ts.Close()
-//
-//	// Create ID
-//	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
-//	resp, shortURL := testRequest(t, ts.URL, "POST", bytes.NewBufferString(longURL))
-//	err := resp.Body.Close()
-//	require.NoError(t, err)
-//	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-//
-//	// Check redirection by existing ID
-//	resp, _ = testRequest(t, shortURL, "GET", nil)
-//	err = resp.Body.Close()
-//	require.NoError(t, err)
-//	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
-//	longURLRecovered := resp.Header.Get("Location")
-//	assert.Equal(t, longURL, longURLRecovered)
-//
-//	// Check StatusBadRequest for non existed ID
-//	shortURL1 := shortURL + "xxx"
-//	resp, _ = testRequest(t, shortURL1, "GET", nil)
-//	err = resp.Body.Close()
-//	require.NoError(t, err)
-//	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-//}
+func testEncodeJSONLongUrl(url string) *bytes.Buffer {
+	v := struct {
+		Url string `json:"url"`
+	}{Url: url}
+	buf := bytes.NewBuffer([]byte{})
+	encoder := json.NewEncoder(buf)
+	encoder.SetEscapeHTML(false) // без этой опции символ '&' будет заменён на "\u0026"
+	_ = encoder.Encode(v)
+	fmt.Println(buf.String())
+	return buf
+}
+
+func testDecodeJSONShortURL(t *testing.T, js string) string {
+	url := struct {
+		Result string `json:"result"`
+	}{}
+	err := json.Unmarshal([]byte(js), &url)
+	require.NoError(t, err)
+	return url.Result
+}
+
+func TestJSONAPI(t *testing.T) {
+	repo := repository.New()
+	r := handlers.NewRouter(repo)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	// Create ID
+	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
+	buf := testEncodeJSONLongUrl(longURL)
+	resp, shortURLInJSON := testRequest(t, ts.URL+"/api/shorten", "POST", buf)
+	err := resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// Check redirection by existing ID
+	shortURL := testDecodeJSONShortURL(t, shortURLInJSON)
+	resp, _ = testRequest(t, shortURL, "GET", nil)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+	longURLRecovered := resp.Header.Get("Location")
+	assert.Equal(t, longURL, longURLRecovered)
+
+	// Check StatusBadRequest for incorrect JSON key in request
+	badJSON := `{"urlBad":"abc"}`
+	resp, shortURLInJSON = testRequest(t, ts.URL+"/api/shorten", "POST", bytes.NewBufferString(badJSON))
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
 
 func TestRouter(t *testing.T) {
 	repo := repository.New()

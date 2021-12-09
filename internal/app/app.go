@@ -43,7 +43,7 @@ func Run() {
 	)
 
 	<-signalChan
-	log.Print("os.Interrupt - shutting down...\n")
+	//log.Print("os.Interrupt - shutting down...\n")
 
 	go func() {
 		<-signalChan
@@ -54,11 +54,11 @@ func Run() {
 	defer cancelShutdown()
 
 	if err := httpServer.Shutdown(gracefullCtx); err != nil {
-		log.Printf("shutdown error: %v\n", err)
+		//log.Printf("shutdown error: %v\n", err)
 		defer os.Exit(1)
 		return
 	} else {
-		log.Printf("gracefully stopped\n")
+		//log.Printf("gracefully stopped\n")
 	}
 
 	defer os.Exit(0)

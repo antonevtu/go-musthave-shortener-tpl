@@ -52,8 +52,8 @@ func TestJSONAPI(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	// Check server returns correct baseURL
-	baseUrl := u.Scheme + "://" + u.Host
-	assert.Equal(t, baseUrl, cfg.Get().BaseURL)
+	baseURL := u.Scheme + "://" + u.Host
+	assert.Equal(t, baseURL, cfg.Get().BaseURL)
 }
 
 func TestTextAPI(t *testing.T) {

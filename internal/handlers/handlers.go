@@ -60,7 +60,7 @@ func handlerStoreURLJSON(repo Repositorier, baseURL string) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		response := responseURL{Result: baseURL + id}
+		response := responseURL{Result: baseURL + "/" + id}
 		//response := responseURL{Result: "http://" + r.Host + "/" + id}
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
@@ -91,7 +91,7 @@ func handlerStoreURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		shortURL := baseURL + id
+		shortURL := baseURL + "/" + id
 		//shortURL := "http://" + r.Host + "/" + id
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")

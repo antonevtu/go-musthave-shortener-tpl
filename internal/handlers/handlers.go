@@ -26,7 +26,7 @@ func NewRouter(repo Repositorier, cfg cfg.Cfg) chi.Router {
 
 	// создадим суброутер
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlerStoreURL(repo))
+		r.Post("/", handlerStoreURL(repo, cfg.BaseURL))
 		r.Post("/api/shorten", handlerStoreURLJSON(repo, cfg.BaseURL))
 		r.Get("/{id}", handlerLoadURL(repo))
 	})
@@ -61,6 +61,7 @@ func handlerStoreURLJSON(repo Repositorier, baseURL string) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		response := responseURL{Result: baseURL + id}
+		//response := responseURL{Result: "http://" + r.Host + "/" + id}
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -76,7 +77,7 @@ func handlerStoreURLJSON(repo Repositorier, baseURL string) http.HandlerFunc {
 	}
 }
 
-func handlerStoreURL(repo Repositorier) http.HandlerFunc {
+func handlerStoreURL(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		body, err := io.ReadAll(r.Body)
@@ -90,7 +91,8 @@ func handlerStoreURL(repo Repositorier) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		shortURL := "http://" + r.Host + "/" + id
+		shortURL := baseURL + id
+		//shortURL := "http://" + r.Host + "/" + id
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)

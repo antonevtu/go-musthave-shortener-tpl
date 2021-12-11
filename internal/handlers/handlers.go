@@ -2,14 +2,18 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"io"
 	"net/http"
 )
 
-func NewRouter(repo repository.Repositorier) chi.Router {
+type Repositorier interface {
+	Store(url string) (string, error)
+	Load(shortURL string) (string, error)
+}
+
+func NewRouter(repo Repositorier) chi.Router {
 	// Определяем роутер chi
 	r := chi.NewRouter()
 
@@ -28,7 +32,7 @@ func NewRouter(repo repository.Repositorier) chi.Router {
 	return r
 }
 
-func handlerStoreURLJSON(repo repository.Repositorier) http.HandlerFunc {
+func handlerStoreURLJSON(repo Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type requestURL struct {
 			URL string `json:"url"`
@@ -71,7 +75,7 @@ func handlerStoreURLJSON(repo repository.Repositorier) http.HandlerFunc {
 	}
 }
 
-func handlerStoreURL(repo repository.Repositorier) http.HandlerFunc {
+func handlerStoreURL(repo Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		body, err := io.ReadAll(r.Body)
@@ -97,7 +101,7 @@ func handlerStoreURL(repo repository.Repositorier) http.HandlerFunc {
 	}
 }
 
-func handlerLoadURL(repo repository.Repositorier) http.HandlerFunc {
+func handlerLoadURL(repo Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		longURL, err := repo.Load(id)

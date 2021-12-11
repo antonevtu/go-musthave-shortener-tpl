@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -56,7 +57,7 @@ func testDecodeJSONShortURL(t *testing.T, js string) string {
 
 func TestJSONAPI(t *testing.T) {
 	repo := repository.New()
-	r := handlers.NewRouter(repo)
+	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -87,7 +88,7 @@ func TestJSONAPI(t *testing.T) {
 
 func TestRouter(t *testing.T) {
 	repo := repository.New()
-	r := handlers.NewRouter(repo)
+	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

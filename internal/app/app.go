@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"log"
@@ -14,14 +15,16 @@ import (
 )
 
 func Run() {
+	cfgApp := cfg.Get()
+
 	repo := repository.New()
-	r := handlers.NewRouter(repo)
+	r := handlers.NewRouter(repo, cfgApp)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	httpServer := &http.Server{
-		Addr:        ":8080",
+		Addr:        cfgApp.ServerAddress,
 		Handler:     r,
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}

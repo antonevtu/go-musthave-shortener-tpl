@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"io"
@@ -13,7 +14,7 @@ type Repositorier interface {
 	Load(shortURL string) (string, error)
 }
 
-func NewRouter(repo Repositorier) chi.Router {
+func NewRouter(repo Repositorier, cfg cfg.Cfg) chi.Router {
 	// Определяем роутер chi
 	r := chi.NewRouter()
 
@@ -26,13 +27,13 @@ func NewRouter(repo Repositorier) chi.Router {
 	// создадим суброутер
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", handlerStoreURL(repo))
-		r.Post("/api/shorten", handlerStoreURLJSON(repo))
+		r.Post("/api/shorten", handlerStoreURLJSON(repo, cfg.BaseURL))
 		r.Get("/{id}", handlerLoadURL(repo))
 	})
 	return r
 }
 
-func handlerStoreURLJSON(repo Repositorier) http.HandlerFunc {
+func handlerStoreURLJSON(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type requestURL struct {
 			URL string `json:"url"`
@@ -59,7 +60,7 @@ func handlerStoreURLJSON(repo Repositorier) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		response := responseURL{Result: "http://" + r.Host + "/" + id}
+		response := responseURL{Result: baseURL + id}
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

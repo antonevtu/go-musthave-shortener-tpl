@@ -17,8 +17,20 @@ import (
 func Run() {
 	cfgApp := cfg.Get()
 
-	repo := repository.New(cfgApp.FileStoragePath)
-	defer repo.Close()
+	// Хранение в файле
+	producer, err := repository.NewProducer(cfgApp.FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer producer.Close()
+	consumer, err := repository.NewConsumer(cfgApp.FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer consumer.Close()
+
+	repo := repository.New(producer, consumer)
+
 	r := handlers.NewRouter(repo, cfgApp)
 
 	ctx, cancel := context.WithCancel(context.Background())

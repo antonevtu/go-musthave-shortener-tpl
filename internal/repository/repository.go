@@ -12,45 +12,39 @@ import (
 type Repository struct {
 	storage     storageT
 	storageLock sync.Mutex
-	producer    *producerT
-	//consumer *consumerT
+	producer    Producer
+	consumer    Consumer
 }
+
 type storageT map[string]string
 
-//type DiskSaver interface {
-//	WriteEvent(event *Event) error
-//	ReadEvent() (*Event, error)
-//}
+type Producer interface {
+	WriteEvent(event *Event) error
+	Close() error
+}
 
-func New(fileStoragePath string) *Repository {
-	producer, err := NewProducer(fileStoragePath)
-	if err != nil {
-		log.Fatal(err)
-	}
+type Consumer interface {
+	ReadEvent() (*Event, error)
+	Close() error
+}
+
+func New(producer Producer, consumer Consumer) *Repository {
 	repository := Repository{
 		storage:  make(storageT, 100),
 		producer: producer,
+		consumer: consumer,
 	}
-	repository.restoreStorage(fileStoragePath)
-	return &repository
-}
-
-func (r *Repository) restoreStorage(fileStoragePath string) {
-	consumer, err := NewConsumer(fileStoragePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer consumer.Close()
-
+	// Восстановление хранилища в оперативной памяти
 	for {
-		readedEvent, err := consumer.ReadEvent()
+		readEvent, err := repository.consumer.ReadEvent()
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			log.Fatal(err)
 		}
-		r.storage[readedEvent.ID] = readedEvent.URL
+		repository.storage[readEvent.ID] = readEvent.URL
 	}
+	return &repository
 }
 
 func (r *Repository) Shorten(url string) (string, error) {
@@ -81,10 +75,6 @@ func (r *Repository) Expand(id string) (string, error) {
 	} else {
 		return longURL, errors.New("a non-existent ID was requested")
 	}
-}
-
-func (r *Repository) Close() error {
-	return r.producer.Close()
 }
 
 func randStringRunes(n int) string {

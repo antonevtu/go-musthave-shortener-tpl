@@ -17,7 +17,8 @@ import (
 func Run() {
 	cfgApp := cfg.Get()
 
-	repo := repository.New()
+	repo := repository.New(cfgApp.FileStoragePath)
+	defer repo.Close()
 	r := handlers.NewRouter(repo, cfgApp)
 
 	ctx, cancel := context.WithCancel(context.Background())

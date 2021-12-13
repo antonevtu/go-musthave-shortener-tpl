@@ -17,7 +17,7 @@ import (
 )
 
 func TestJSONAPI(t *testing.T) {
-	repo := repository.New()
+	repo := repository.New(cfg.Get().FileStoragePath)
 	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -57,7 +57,7 @@ func TestJSONAPI(t *testing.T) {
 }
 
 func TestTextAPI(t *testing.T) {
-	repo := repository.New()
+	repo := repository.New(cfg.Get().FileStoragePath)
 	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
 	defer ts.Close()

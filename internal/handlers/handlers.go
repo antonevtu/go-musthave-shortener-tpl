@@ -10,8 +10,8 @@ import (
 )
 
 type Repositorier interface {
-	Store(url string) (string, error)
-	Load(shortURL string) (string, error)
+	Shorten(url string) (string, error)
+	Expand(shortURL string) (string, error)
 }
 
 func NewRouter(repo Repositorier, cfg cfg.Cfg) chi.Router {
@@ -26,14 +26,14 @@ func NewRouter(repo Repositorier, cfg cfg.Cfg) chi.Router {
 
 	// создадим суброутер
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlerStoreURL(repo, cfg.BaseURL))
-		r.Post("/api/shorten", handlerStoreURLJSON(repo, cfg.BaseURL))
-		r.Get("/{id}", handlerLoadURL(repo))
+		r.Post("/", handlerShortenURL(repo, cfg.BaseURL))
+		r.Post("/api/shorten", handlerShortenURLAPI(repo, cfg.BaseURL))
+		r.Get("/{id}", handlerExpandURL(repo))
 	})
 	return r
 }
 
-func handlerStoreURLJSON(repo Repositorier, baseURL string) http.HandlerFunc {
+func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type requestURL struct {
 			URL string `json:"url"`
@@ -56,7 +56,7 @@ func handlerStoreURLJSON(repo Repositorier, baseURL string) http.HandlerFunc {
 			http.Error(w, `no key "url" or empty request`, http.StatusBadRequest)
 		}
 
-		id, err := repo.Store(url.URL)
+		id, err := repo.Shorten(url.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -76,7 +76,7 @@ func handlerStoreURLJSON(repo Repositorier, baseURL string) http.HandlerFunc {
 	}
 }
 
-func handlerStoreURL(repo Repositorier, baseURL string) http.HandlerFunc {
+func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		body, err := io.ReadAll(r.Body)
@@ -86,7 +86,7 @@ func handlerStoreURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		}
 		urlString := string(body)
 
-		id, err := repo.Store(urlString)
+		id, err := repo.Shorten(urlString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -102,10 +102,10 @@ func handlerStoreURL(repo Repositorier, baseURL string) http.HandlerFunc {
 	}
 }
 
-func handlerLoadURL(repo Repositorier) http.HandlerFunc {
+func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		longURL, err := repo.Load(id)
+		longURL, err := repo.Expand(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}

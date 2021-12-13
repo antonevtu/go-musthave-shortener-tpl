@@ -2,6 +2,8 @@ package repository
 
 import (
 	"errors"
+	"io"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -10,10 +12,48 @@ import (
 type Repository struct {
 	storage     storageT
 	storageLock sync.Mutex
+	producer    *producerT
+	//consumer *consumerT
 }
 type storageT map[string]string
 
-func (r *Repository) Load(id string) (string, error) {
+//type DiskSaver interface {
+//	WriteEvent(event *Event) error
+//	ReadEvent() (*Event, error)
+//}
+
+func New(fileStoragePath string) *Repository {
+	producer, err := NewProducer(fileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	repository := Repository{
+		storage:  make(storageT, 100),
+		producer: producer,
+	}
+	repository.restoreStorage(fileStoragePath)
+	return &repository
+}
+
+func (r *Repository) restoreStorage(fileStoragePath string) {
+	consumer, err := NewConsumer(fileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer consumer.Close()
+
+	for {
+		readedEvent, err := consumer.ReadEvent()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+		r.storage[readedEvent.ID] = readedEvent.URL
+	}
+}
+
+func (r *Repository) Expand(id string) (string, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	longURL, ok := r.storage[id]
@@ -24,7 +64,7 @@ func (r *Repository) Load(id string) (string, error) {
 	}
 }
 
-func (r *Repository) Store(url string) (string, error) {
+func (r *Repository) Shorten(url string) (string, error) {
 	const idLen = 5
 	const attemptsNumber = 10
 	r.storageLock.Lock()
@@ -33,10 +73,18 @@ func (r *Repository) Store(url string) (string, error) {
 		id := randStringRunes(idLen)
 		if _, ok := r.storage[id]; !ok {
 			r.storage[id] = url
-			return id, nil
+			err := r.producer.WriteEvent(&Event{
+				ID:  id,
+				URL: url,
+			})
+			return id, err
 		}
 	}
 	return "", errors.New("can't generate random ID")
+}
+
+func (r *Repository) Close() error {
+	return r.producer.Close()
 }
 
 func randStringRunes(n int) string {
@@ -47,10 +95,4 @@ func randStringRunes(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
-}
-
-func New() *Repository {
-	return &Repository{
-		storage: make(storageT, 100),
-	}
 }

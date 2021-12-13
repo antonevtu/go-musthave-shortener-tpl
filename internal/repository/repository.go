@@ -53,17 +53,6 @@ func (r *Repository) restoreStorage(fileStoragePath string) {
 	}
 }
 
-func (r *Repository) Expand(id string) (string, error) {
-	r.storageLock.Lock()
-	defer r.storageLock.Unlock()
-	longURL, ok := r.storage[id]
-	if ok {
-		return longURL, nil
-	} else {
-		return longURL, errors.New("a non-existent ID was requested")
-	}
-}
-
 func (r *Repository) Shorten(url string) (string, error) {
 	const idLen = 5
 	const attemptsNumber = 10
@@ -81,6 +70,17 @@ func (r *Repository) Shorten(url string) (string, error) {
 		}
 	}
 	return "", errors.New("can't generate random ID")
+}
+
+func (r *Repository) Expand(id string) (string, error) {
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
+	longURL, ok := r.storage[id]
+	if ok {
+		return longURL, nil
+	} else {
+		return longURL, errors.New("a non-existent ID was requested")
+	}
 }
 
 func (r *Repository) Close() error {

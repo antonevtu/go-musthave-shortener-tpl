@@ -13,10 +13,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 )
 
 func TestJSONAPI(t *testing.T) {
+	os.Remove(cfg.Get().FileStoragePath)
 	repo := repository.New(cfg.Get().FileStoragePath)
 	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
@@ -26,7 +28,6 @@ func TestJSONAPI(t *testing.T) {
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
 	buf := testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON := testRequest(t, ts.URL+"/api/shorten", "POST", buf)
-	_ = shortURLInJSON
 	err := resp.Body.Close()
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -54,9 +55,15 @@ func TestJSONAPI(t *testing.T) {
 	// Check server returns correct baseURL
 	baseURL := u.Scheme + "://" + u.Host
 	assert.Equal(t, baseURL, cfg.Get().BaseURL)
+
+	// Check storage file created
+	file, err := os.Open(cfg.Get().FileStoragePath)
+	assert.Equal(t, err, nil)
+	defer file.Close()
 }
 
 func TestTextAPI(t *testing.T) {
+	os.Remove(cfg.Get().FileStoragePath)
 	repo := repository.New(cfg.Get().FileStoragePath)
 	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
@@ -93,6 +100,11 @@ func TestTextAPI(t *testing.T) {
 	err = resp.Body.Close()
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+
+	// Check storage file created
+	file, err := os.Open(cfg.Get().FileStoragePath)
+	assert.Equal(t, err, nil)
+	defer file.Close()
 }
 
 func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Response, string) {

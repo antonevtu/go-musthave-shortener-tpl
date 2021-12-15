@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"flag"
 	"github.com/caarlos0/env/v6"
 	"log"
 )
@@ -13,9 +14,27 @@ type Cfg struct {
 
 func Get() Cfg {
 	var cfg Cfg
+
+	// Заполнение cfg значениями из переменных окружения, в том числе дефолтными значениями
 	err := env.Parse(&cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Если заданы аргументы командной строки - перетираем значения переменных окружения
+	flag.Func("a", "server address for shorten", func(flagValue string) error {
+		cfg.ServerAddress = flagValue
+		return nil
+	})
+	flag.Func("b", "base url for expand", func(flagValue string) error {
+		cfg.BaseURL = flagValue
+		return nil
+	})
+	flag.Func("f", "base url for expand", func(flagValue string) error {
+		cfg.FileStoragePath = flagValue
+		return nil
+	})
+
+	flag.Parse()
 	return cfg
 }

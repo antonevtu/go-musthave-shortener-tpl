@@ -2,8 +2,10 @@ package cfg
 
 import (
 	"flag"
+	"fmt"
 	"github.com/caarlos0/env/v6"
 	"log"
+	"os"
 )
 
 type Cfg struct {
@@ -20,6 +22,8 @@ func Get() Cfg {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println(os.Args)
 
 	// Если заданы аргументы командной строки - перетираем значения переменных окружения
 	flag.Func("a", "server address for shorten", func(flagValue string) error {

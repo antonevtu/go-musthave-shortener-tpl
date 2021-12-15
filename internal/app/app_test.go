@@ -3,9 +3,11 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
+	"github.com/caarlos0/env/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -18,20 +20,22 @@ import (
 	"testing"
 )
 
+var cfgApp = config()
+
 func TestJSONAPI(t *testing.T) {
-	_ = os.Remove(cfg.Get().FileStoragePath)
-	producer, err := repository.NewProducer(cfg.Get().FileStoragePath)
+	_ = os.Remove(cfgApp.FileStoragePath)
+	producer, err := repository.NewProducer(cfgApp.FileStoragePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer producer.Close()
-	consumer, err := repository.NewConsumer(cfg.Get().FileStoragePath)
+	consumer, err := repository.NewConsumer(cfgApp.FileStoragePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer consumer.Close()
 	repo := repository.New(producer, consumer)
-	r := handlers.NewRouter(repo, cfg.Get())
+	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -65,28 +69,28 @@ func TestJSONAPI(t *testing.T) {
 
 	// Check server returns correct baseURL
 	baseURL := u.Scheme + "://" + u.Host
-	assert.Equal(t, baseURL, cfg.Get().BaseURL)
+	assert.Equal(t, baseURL, cfgApp.BaseURL)
 
 	// Check storage file created
-	file, err := os.Open(cfg.Get().FileStoragePath)
+	file, err := os.Open(cfgApp.FileStoragePath)
 	assert.Equal(t, err, nil)
 	defer file.Close()
 }
 
 func TestTextAPI(t *testing.T) {
-	_ = os.Remove(cfg.Get().FileStoragePath)
-	producer, err := repository.NewProducer(cfg.Get().FileStoragePath)
+	_ = os.Remove(cfgApp.FileStoragePath)
+	producer, err := repository.NewProducer(cfgApp.FileStoragePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer producer.Close()
-	consumer, err := repository.NewConsumer(cfg.Get().FileStoragePath)
+	consumer, err := repository.NewConsumer(cfgApp.FileStoragePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer consumer.Close()
 	repo := repository.New(producer, consumer)
-	r := handlers.NewRouter(repo, cfg.Get())
+	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -123,7 +127,7 @@ func TestTextAPI(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 
 	// Check storage file created
-	file, err := os.Open(cfg.Get().FileStoragePath)
+	file, err := os.Open(cfgApp.FileStoragePath)
 	assert.Equal(t, err, nil)
 	defer file.Close()
 }
@@ -166,4 +170,31 @@ func testDecodeJSONShortURL(t *testing.T, js string) string {
 	err := json.Unmarshal([]byte(js), &url)
 	require.NoError(t, err)
 	return url.Result
+}
+
+func config() cfg.Cfg {
+	var cfg cfg.Cfg
+
+	// Заполнение cfg значениями из переменных окружения, в том числе дефолтными значениями
+	err := env.Parse(&cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Если заданы аргументы командной строки - перетираем значения переменных окружения
+	flag.Func("a", "server address for shorten", func(flagValue string) error {
+		cfg.ServerAddress = flagValue
+		return nil
+	})
+	flag.Func("b", "base url for expand", func(flagValue string) error {
+		cfg.BaseURL = flagValue
+		return nil
+	})
+	flag.Func("f", "path to storage file", func(flagValue string) error {
+		cfg.FileStoragePath = flagValue
+		return nil
+	})
+
+	//flag.Parse()
+	return cfg
 }

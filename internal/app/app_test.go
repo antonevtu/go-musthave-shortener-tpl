@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,8 +19,18 @@ import (
 )
 
 func TestJSONAPI(t *testing.T) {
-	os.Remove(cfg.Get().FileStoragePath)
-	repo := repository.New(cfg.Get().FileStoragePath)
+	_ = os.Remove(cfg.Get().FileStoragePath)
+	producer, err := repository.NewProducer(cfg.Get().FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer producer.Close()
+	consumer, err := repository.NewConsumer(cfg.Get().FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer consumer.Close()
+	repo := repository.New(producer, consumer)
 	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -28,7 +39,7 @@ func TestJSONAPI(t *testing.T) {
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
 	buf := testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON := testRequest(t, ts.URL+"/api/shorten", "POST", buf)
-	err := resp.Body.Close()
+	err = resp.Body.Close()
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
@@ -63,8 +74,18 @@ func TestJSONAPI(t *testing.T) {
 }
 
 func TestTextAPI(t *testing.T) {
-	os.Remove(cfg.Get().FileStoragePath)
-	repo := repository.New(cfg.Get().FileStoragePath)
+	_ = os.Remove(cfg.Get().FileStoragePath)
+	producer, err := repository.NewProducer(cfg.Get().FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer producer.Close()
+	consumer, err := repository.NewConsumer(cfg.Get().FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer consumer.Close()
+	repo := repository.New(producer, consumer)
 	r := handlers.NewRouter(repo, cfg.Get())
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -72,7 +93,7 @@ func TestTextAPI(t *testing.T) {
 	// Create ID
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
 	resp, shortURL_ := testRequest(t, ts.URL, "POST", bytes.NewBufferString(longURL))
-	err := resp.Body.Close()
+	err = resp.Body.Close()
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 

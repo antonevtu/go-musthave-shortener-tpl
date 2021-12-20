@@ -3,7 +3,6 @@ package repository
 import (
 	"errors"
 	"io"
-	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -28,7 +27,7 @@ type Consumer interface {
 	Close() error
 }
 
-func New(producer Producer, consumer Consumer) *Repository {
+func New(producer Producer, consumer Consumer) (*Repository, error) {
 	repository := Repository{
 		storage:  make(storageT, 100),
 		producer: producer,
@@ -38,13 +37,12 @@ func New(producer Producer, consumer Consumer) *Repository {
 	for {
 		readEvent, err := repository.consumer.ReadEvent()
 		if err == io.EOF {
-			break
+			return &repository, nil
 		} else if err != nil {
-			log.Fatal(err)
+			return &repository, err
 		}
 		repository.storage[readEvent.ID] = readEvent.URL
 	}
-	return &repository
 }
 
 func (r *Repository) Shorten(url string) (string, error) {

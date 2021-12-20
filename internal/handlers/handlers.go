@@ -14,7 +14,7 @@ type Repositorier interface {
 	Expand(shortURL string) (string, error)
 }
 
-func NewRouter(repo Repositorier, cfg cfg.Cfg) chi.Router {
+func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 	// Определяем роутер chi
 	r := chi.NewRouter()
 
@@ -45,25 +45,30 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		url := requestURL{}
 		err = json.Unmarshal(body, &url)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 		if url.URL == "" {
 			http.Error(w, `no key "url" or empty request`, http.StatusBadRequest)
+			return
 		}
 
 		id, err := repo.Shorten(url.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		response := responseURL{Result: baseURL + "/" + id}
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -89,6 +94,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		id, err := repo.Shorten(urlString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		shortURL := baseURL + "/" + id
 
@@ -108,6 +114,7 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 		longURL, err := repo.Expand(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 		w.Header().Set("Location", longURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)

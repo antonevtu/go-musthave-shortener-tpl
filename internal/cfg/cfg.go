@@ -3,22 +3,21 @@ package cfg
 import (
 	"flag"
 	"github.com/caarlos0/env/v6"
-	"log"
 )
 
-type Cfg struct {
+type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
 	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"./storage.txt"`
 }
 
-func Get() Cfg {
-	var cfg Cfg
+func New() (Config, error) {
+	var cfg Config
 
 	// Заполнение cfg значениями из переменных окружения, в том числе дефолтными значениями
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		return cfg, err
 	}
 
 	// Если заданы аргументы командной строки - перетираем значения переменных окружения
@@ -36,5 +35,5 @@ func Get() Cfg {
 	})
 
 	flag.Parse()
-	return cfg
+	return cfg, err
 }

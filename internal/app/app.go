@@ -15,7 +15,10 @@ import (
 )
 
 func Run() {
-	cfgApp := cfg.Get()
+	cfgApp, err := cfg.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Хранение в файле
 	producer, err := repository.NewProducer(cfgApp.FileStoragePath)
@@ -29,7 +32,10 @@ func Run() {
 	}
 	defer consumer.Close()
 
-	repo := repository.New(producer, consumer)
+	repo, err := repository.New(producer, consumer)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	r := handlers.NewRouter(repo, cfgApp)
 
@@ -61,21 +67,12 @@ func Run() {
 	<-signalChan
 	log.Print("os.Interrupt - shutting down...\n")
 
-	go func() {
-		<-signalChan
-		log.Fatal("os.Kill - terminating...\n")
-	}()
-
 	gracefullCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelShutdown()
 
 	if err := httpServer.Shutdown(gracefullCtx); err != nil {
 		log.Printf("shutdown error: %v\n", err)
-		defer os.Exit(1)
-		return
 	} else {
 		log.Printf("gracefully stopped\n")
 	}
-
-	defer os.Exit(0)
 }

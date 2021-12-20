@@ -14,6 +14,13 @@ type Repositorier interface {
 	Expand(shortURL string) (string, error)
 }
 
+type requestURL struct {
+	URL string `json:"url"`
+}
+type responseURL struct {
+	Result string `json:"result"`
+}
+
 func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 	// Определяем роутер chi
 	r := chi.NewRouter()
@@ -35,12 +42,6 @@ func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 
 func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		type requestURL struct {
-			URL string `json:"url"`
-		}
-		type responseURL struct {
-			Result string `json:"result"`
-		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

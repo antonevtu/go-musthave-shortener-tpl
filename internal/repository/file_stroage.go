@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-type Event struct {
+type Entity struct {
 	ID  string `json:"id"`
 	URL string `json:"url"`
 }
@@ -26,7 +26,7 @@ func NewProducer(filename string) (*producerT, error) {
 	}, nil
 }
 
-func (p *producerT) WriteEvent(event *Event) error {
+func (p *producerT) WriteEntity(event *Entity) error {
 	err := p.encoder.Encode(event)
 	return err
 }
@@ -51,8 +51,8 @@ func NewConsumer(fileName string) (*consumerT, error) {
 	}, nil
 }
 
-func (c *consumerT) ReadEvent() (*Event, error) {
-	event := &Event{}
+func (c *consumerT) ReadEntity() (*Entity, error) {
+	event := &Entity{}
 	err := c.decoder.Decode(event)
 	return event, err
 }

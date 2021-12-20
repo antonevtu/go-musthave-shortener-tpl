@@ -18,12 +18,12 @@ type Repository struct {
 type storageT map[string]string
 
 type Producer interface {
-	WriteEvent(event *Event) error
+	WriteEntity(event *Entity) error
 	Close() error
 }
 
 type Consumer interface {
-	ReadEvent() (*Event, error)
+	ReadEntity() (*Entity, error)
 	Close() error
 }
 
@@ -35,7 +35,7 @@ func New(producer Producer, consumer Consumer) (*Repository, error) {
 	}
 	// Восстановление хранилища в оперативной памяти
 	for {
-		readEvent, err := repository.consumer.ReadEvent()
+		readEvent, err := repository.consumer.ReadEntity()
 		if err == io.EOF {
 			return &repository, nil
 		} else if err != nil {
@@ -54,7 +54,7 @@ func (r *Repository) Shorten(url string) (string, error) {
 		id := randStringRunes(idLen)
 		if _, ok := r.storage[id]; !ok {
 			r.storage[id] = url
-			err := r.producer.WriteEvent(&Event{
+			err := r.producer.WriteEntity(&Entity{
 				ID:  id,
 				URL: url,
 			})

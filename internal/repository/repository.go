@@ -61,10 +61,10 @@ func (fw *fileWriterT) New(filename string) error {
 // RestoreFromFile Восстановление хранилища в оперативной памяти из текстового файла
 func (r *Repository) RestoreFromFile(fileName string) error {
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 	decoder := json.NewDecoder(file)
 	entity := &Entity{}
 	for {

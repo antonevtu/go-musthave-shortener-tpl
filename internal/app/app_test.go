@@ -37,6 +37,11 @@ func TestJSONAPI(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
+	// Parse shortURL
+	shortURL := testDecodeJSONShortURL(t, shortURLInJSON)
+	u, err := url.Parse(shortURL)
+	require.NoError(t, err)
+
 	// Create ID
 	longURL = "https://habr.com/ru/all/"
 	buf = testEncodeJSONLongURL(longURL)
@@ -46,8 +51,8 @@ func TestJSONAPI(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Parse shortURL
-	shortURL := testDecodeJSONShortURL(t, shortURLInJSON)
-	u, err := url.Parse(shortURL)
+	shortURL = testDecodeJSONShortURL(t, shortURLInJSON)
+	u, err = url.Parse(shortURL)
 	require.NoError(t, err)
 
 	// Check redirection by existing ID

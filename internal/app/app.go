@@ -21,10 +21,10 @@ func Run() {
 	}
 
 	repo, err := repository.New(cfgApp.FileStoragePath)
-	defer repo.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer repo.Close()
 
 	r := handlers.NewRouter(repo, cfgApp)
 

@@ -29,7 +29,7 @@ func TestJSONAPI(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	// Create ID
+	// Create ID1
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
 	buf := testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON := testRequest(t, ts.URL+"/api/shorten", "POST", buf)

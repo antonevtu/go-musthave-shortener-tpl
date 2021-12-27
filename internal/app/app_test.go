@@ -39,7 +39,7 @@ func TestJSONAPI(t *testing.T) {
 
 	// Parse shortURL
 	shortURL := testDecodeJSONShortURL(t, shortURLInJSON)
-	u, err := url.Parse(shortURL)
+	_, err = url.Parse(shortURL)
 	require.NoError(t, err)
 
 	// Create ID
@@ -52,7 +52,7 @@ func TestJSONAPI(t *testing.T) {
 
 	// Parse shortURL
 	shortURL = testDecodeJSONShortURL(t, shortURLInJSON)
-	u, err = url.Parse(shortURL)
+	u, err := url.Parse(shortURL)
 	require.NoError(t, err)
 
 	// Check redirection by existing ID

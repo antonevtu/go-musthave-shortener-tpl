@@ -19,16 +19,10 @@ import (
 )
 
 func TestJSONAPI(t *testing.T) {
-	var cfgApp = config(t)
+	cfgApp := config(t)
 	_ = os.Remove(cfgApp.FileStoragePath)
-	producer, err := repository.NewProducer(cfgApp.FileStoragePath)
-	assert.Equal(t, err, nil)
-	defer producer.Close()
-	consumer, err := repository.NewConsumer(cfgApp.FileStoragePath)
-	assert.Equal(t, err, nil)
-	defer consumer.Close()
 
-	repo, err := repository.New(producer, consumer)
+	repo, err := repository.New(cfgApp.FileStoragePath)
 	assert.Equal(t, err, nil)
 
 	r := handlers.NewRouter(repo, cfgApp)
@@ -39,6 +33,14 @@ func TestJSONAPI(t *testing.T) {
 	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
 	buf := testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON := testRequest(t, ts.URL+"/api/shorten", "POST", buf)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// Create ID
+	longURL = "https://habr.com/ru/all/"
+	buf = testEncodeJSONLongURL(longURL)
+	resp, shortURLInJSON = testRequest(t, ts.URL+"/api/shorten", "POST", buf)
 	err = resp.Body.Close()
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -75,14 +77,8 @@ func TestJSONAPI(t *testing.T) {
 
 func TestTextAPI(t *testing.T) {
 	var cfgApp = config(t)
-	_ = os.Remove(cfgApp.FileStoragePath)
-	producer, err := repository.NewProducer(cfgApp.FileStoragePath)
-	assert.Equal(t, err, nil)
-	defer producer.Close()
-	consumer, err := repository.NewConsumer(cfgApp.FileStoragePath)
-	assert.Equal(t, err, nil)
-	defer consumer.Close()
-	repo, err := repository.New(producer, consumer)
+	//_ = os.Remove(cfgApp.FileStoragePath)
+	repo, err := repository.New(cfgApp.FileStoragePath)
 	assert.Equal(t, err, nil)
 	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)

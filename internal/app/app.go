@@ -20,19 +20,8 @@ func Run() {
 		log.Fatal(err)
 	}
 
-	// Хранение в файле
-	producer, err := repository.NewProducer(cfgApp.FileStoragePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer producer.Close()
-	consumer, err := repository.NewConsumer(cfgApp.FileStoragePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer consumer.Close()
-
-	repo, err := repository.New(producer, consumer)
+	repo, err := repository.New(cfgApp.FileStoragePath)
+	defer repo.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -70,7 +59,7 @@ func Run() {
 	gracefullCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelShutdown()
 
-	if err := httpServer.Shutdown(gracefullCtx); err != nil {
+	if err = httpServer.Shutdown(gracefullCtx); err != nil {
 		log.Printf("shutdown error: %v\n", err)
 	} else {
 		log.Printf("gracefully stopped\n")

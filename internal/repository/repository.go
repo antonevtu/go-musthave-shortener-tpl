@@ -1,9 +1,11 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 )
@@ -11,37 +13,68 @@ import (
 type Repository struct {
 	storage     storageT
 	storageLock sync.Mutex
-	producer    Producer
-	consumer    Consumer
+	fileWriter  fileWriterT
 }
 
 type storageT map[string]string
 
-type Producer interface {
-	WriteEntity(event *Entity) error
-	Close() error
+type Entity struct {
+	ID  string `json:"id"`
+	URL string `json:"url"`
 }
 
-type Consumer interface {
-	ReadEntity() (*Entity, error)
-	Close() error
+type fileWriterT struct {
+	file    *os.File
+	encoder *json.Encoder
 }
 
-func New(producer Producer, consumer Consumer) (*Repository, error) {
+func New(fileName string) (*Repository, error) {
 	repository := Repository{
-		storage:  make(storageT, 100),
-		producer: producer,
-		consumer: consumer,
+		storage:    make(storageT, 100),
+		fileWriter: fileWriterT{},
 	}
-	// Восстановление хранилища в оперативной памяти
+
+	err := repository.RestoreFromFile(fileName)
+	if err != nil {
+		return &repository, err
+	}
+
+	err = repository.fileWriter.New(fileName)
+	if err != nil {
+		return &repository, err
+	}
+	return &repository, nil
+}
+
+func (fw *fileWriterT) New(filename string) error {
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		return err
+	}
+	*fw = fileWriterT{
+		file:    file,
+		encoder: json.NewEncoder(file),
+	}
+	return nil
+}
+
+// RestoreFromFile Восстановление хранилища в оперативной памяти из текстового файла
+func (r *Repository) RestoreFromFile(fileName string) error {
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(file)
+	entity := &Entity{}
 	for {
-		readEvent, err := repository.consumer.ReadEntity()
+		err = decoder.Decode(entity)
 		if err == io.EOF {
-			return &repository, nil
+			return nil
 		} else if err != nil {
-			return &repository, err
+			return err
 		}
-		repository.storage[readEvent.ID] = readEvent.URL
+		r.storage[entity.ID] = entity.URL
 	}
 }
 
@@ -54,7 +87,7 @@ func (r *Repository) Shorten(url string) (string, error) {
 		id := randStringRunes(idLen)
 		if _, ok := r.storage[id]; !ok {
 			r.storage[id] = url
-			err := r.producer.WriteEntity(&Entity{
+			err := r.fileWriter.encoder.Encode(&Entity{
 				ID:  id,
 				URL: url,
 			})
@@ -69,10 +102,14 @@ func (r *Repository) Expand(id string) (string, error) {
 	defer r.storageLock.Unlock()
 	longURL, ok := r.storage[id]
 	if ok {
-		return longURL, nil
+		return string(longURL), nil
 	} else {
 		return longURL, errors.New("a non-existent ID was requested")
 	}
+}
+
+func (r *Repository) Close() {
+	_ = r.fileWriter.file.Close()
 }
 
 func randStringRunes(n int) string {

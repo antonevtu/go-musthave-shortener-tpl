@@ -42,7 +42,7 @@ func TestJSONAPI(t *testing.T) {
 	_, err = url.Parse(shortURL)
 	require.NoError(t, err)
 
-	// Create ID
+	// Create ID2
 	longURL = "https://habr.com/ru/all/"
 	buf = testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON = testRequest(t, ts.URL+"/api/shorten", "POST", buf)

@@ -34,19 +34,19 @@ func New(fileName string) (*Repository, error) {
 		fileWriter: fileWriterT{},
 	}
 
-	err := repository.RestoreFromFile(fileName)
+	err := repository.restoreFromFile(fileName)
 	if err != nil {
 		return &repository, err
 	}
 
-	err = repository.fileWriter.New(fileName)
+	err = repository.fileWriter.new(fileName)
 	if err != nil {
 		return &repository, err
 	}
 	return &repository, nil
 }
 
-func (fw *fileWriterT) New(filename string) error {
+func (fw *fileWriterT) new(filename string) error {
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
 		return err
@@ -58,8 +58,8 @@ func (fw *fileWriterT) New(filename string) error {
 	return nil
 }
 
-// RestoreFromFile Восстановление хранилища в оперативной памяти из текстового файла
-func (r *Repository) RestoreFromFile(fileName string) error {
+// restoreFromFile Восстановление хранилища в оперативной памяти из текстового файла
+func (r *Repository) restoreFromFile(fileName string) error {
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (r *Repository) Expand(id string) (string, error) {
 	defer r.storageLock.Unlock()
 	longURL, ok := r.storage[id]
 	if ok {
-		return string(longURL), nil
+		return longURL, nil
 	} else {
 		return longURL, errors.New("a non-existent ID was requested")
 	}

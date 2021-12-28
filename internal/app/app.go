@@ -54,6 +54,7 @@ func Run() {
 	)
 
 	<-signalChan
+	cancel()
 	log.Print("os.Interrupt - shutting down...\n")
 
 	gracefullCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)

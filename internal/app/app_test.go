@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
@@ -18,9 +19,37 @@ import (
 	"testing"
 )
 
-func TestJSONAPI(t *testing.T) {
+func TestGZipJSONAPI(t *testing.T) {
 	cfgApp := config(t)
 	_ = os.Remove(cfgApp.FileStoragePath)
+	repo, err := repository.New(cfgApp.FileStoragePath)
+	assert.Equal(t, err, nil)
+
+	r := handlers.NewRouter(repo, cfgApp)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	// Create ID1
+	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
+	buf := testEncodeJSONLongURL(longURL)
+	resp, shortURLInJSON := testGZipRequest(t, ts.URL+"/api/shorten", "POST", buf)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// Check response header
+	val := resp.Header.Get("Content-Encoding")
+	assert.Equal(t, val, "gzip")
+
+	// Parse shortURL
+	shortURL := testDecodeJSONShortURL(t, string(shortURLInJSON))
+	_, err = url.Parse(shortURL)
+	require.NoError(t, err)
+}
+
+func TestJSONAPI(t *testing.T) {
+	cfgApp := config(t)
+	//_ = os.Remove(cfgApp.FileStoragePath)
 
 	repo, err := repository.New(cfgApp.FileStoragePath)
 	assert.Equal(t, err, nil)
@@ -38,7 +67,7 @@ func TestJSONAPI(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Parse shortURL
-	shortURL := testDecodeJSONShortURL(t, shortURLInJSON)
+	shortURL := testDecodeJSONShortURL(t, string(shortURLInJSON))
 	_, err = url.Parse(shortURL)
 	require.NoError(t, err)
 
@@ -51,7 +80,7 @@ func TestJSONAPI(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Parse shortURL
-	shortURL = testDecodeJSONShortURL(t, shortURLInJSON)
+	shortURL = testDecodeJSONShortURL(t, string(shortURLInJSON))
 	u, err := url.Parse(shortURL)
 	require.NoError(t, err)
 
@@ -97,7 +126,7 @@ func TestTextAPI(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Parse shortURL
-	u, err := url.Parse(shortURL_)
+	u, err := url.Parse(string(shortURL_))
 	require.NoError(t, err)
 
 	// Check redirection by existing ID
@@ -127,7 +156,35 @@ func TestTextAPI(t *testing.T) {
 	defer file.Close()
 }
 
-func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Response, string) {
+func testGZipRequest(t *testing.T, url, method string, body io.Reader) (*http.Response, []byte) {
+	client := &http.Client{}
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	gz := gzip.NewWriter(buf)
+	body_, _ := io.ReadAll(body)
+	gz.Write(body_)
+
+	req, err := http.NewRequest(method, url, buf)
+	req.Header.Set("Accept-Encoding", "gzip")
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	dec, err := gzip.NewReader(resp.Body)
+	require.NoError(t, err)
+	defer dec.Close()
+
+	respBody, err := ioutil.ReadAll(dec)
+	require.NoError(t, err)
+
+	return resp, respBody
+}
+
+func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Response, []byte) {
 	client := &http.Client{}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -144,7 +201,7 @@ func testRequest(t *testing.T, url, method string, body io.Reader) (*http.Respon
 
 	defer resp.Body.Close()
 
-	return resp, string(respBody)
+	return resp, respBody
 }
 
 func testEncodeJSONLongURL(url string) *bytes.Buffer {

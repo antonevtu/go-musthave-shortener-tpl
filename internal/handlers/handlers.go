@@ -68,7 +68,7 @@ func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		if (err != nil) && (err != io.ErrUnexpectedEOF) {
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -147,20 +147,18 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 
 func gzipRequestHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// переменная reader будет равна r.Body или *gzip.Reader
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			defer gz.Close()
 			r.Body = gz
 			next.ServeHTTP(w, r)
-			defer gz.Close()
 		} else {
 			next.ServeHTTP(w, r)
 		}
-
 	})
 }
 

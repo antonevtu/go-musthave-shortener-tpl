@@ -169,7 +169,7 @@ func testGZipRequest(t *testing.T, url, method string, body io.Reader) (*http.Re
 	require.NoError(t, err)
 	_, err = gz.Write(body_)
 	require.NoError(t, err)
-	err = gz.Flush()
+	err = gz.Close()
 	require.NoError(t, err)
 
 	req, err := http.NewRequest(method, url, &buf)

@@ -124,7 +124,23 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 
 func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
+		var reader io.Reader
+
+		if r.Header.Get("Content-Encoding") == "gzip" {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			reader = gz
+			defer gz.Close()
+
+		} else {
+			reader = r.Body
+		}
+
+		body, err := io.ReadAll(reader)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

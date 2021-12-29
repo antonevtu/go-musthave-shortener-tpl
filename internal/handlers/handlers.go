@@ -23,14 +23,14 @@ type responseURL struct {
 	Result string `json:"result"`
 }
 
-type gzipReader struct {
-	*http.Request
-	Reader io.Reader
-}
-
-func (r gzipReader) Read(b []byte) (int, error) {
-	return r.Reader.Read(b)
-}
+//type gzipReader struct {
+//	*http.Request
+//	Reader io.Reader
+//}
+//
+//func (r gzipReader) Read(b []byte) (int, error) {
+//	return r.Reader.Read(b)
+//}
 
 type gzipWriter struct {
 	http.ResponseWriter
@@ -54,7 +54,7 @@ func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 
 	// архивирование запроса/ответа gzip
 	r.Use(gzipResponseHandle)
-	//r.Use(gzipRequestHandle)
+	r.Use(gzipRequestHandle)
 
 	// создадим суброутер
 	r.Route("/", func(r chi.Router) {
@@ -67,23 +67,23 @@ func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 
 func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var reader io.Reader
-
-		if r.Header.Get("Content-Encoding") == "gzip" {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
-
+		//var reader io.Reader
+		//
+		//if r.Header.Get("Content-Encoding") == "gzip" {
+		//	gz, err := gzip.NewReader(r.Body)
+		//	if err != nil {
+		//		http.Error(w, err.Error(), http.StatusInternalServerError)
+		//		return
+		//	}
+		//	reader = gz
+		//	defer gz.Close()
+		//
+		//} else {
+		//	reader = r.Body
+		//}
+		//
+		//body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if (err != nil) && (err != io.ErrUnexpectedEOF) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -124,23 +124,23 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 
 func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var reader io.Reader
-
-		if r.Header.Get("Content-Encoding") == "gzip" {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
-
+		//var reader io.Reader
+		//
+		//if r.Header.Get("Content-Encoding") == "gzip" {
+		//	gz, err := gzip.NewReader(r.Body)
+		//	if err != nil {
+		//		http.Error(w, err.Error(), http.StatusInternalServerError)
+		//		return
+		//	}
+		//	reader = gz
+		//	defer gz.Close()
+		//
+		//} else {
+		//	reader = r.Body
+		//}
+		//
+		//body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -177,23 +177,24 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 	}
 }
 
-//func gzipRequestHandle(next http.Handler) http.Handler{
-//	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//		// переменная reader будет равна r.Body или *gzip.Reader
-//		if r.Header.Get(`Content-Encoding`) == `gzip` {
-//			gz, err := gzip.NewReader(r.Body)
-//			if err != nil {
-//				http.Error(w, err.Error(), http.StatusInternalServerError)
-//				return
-//			}
-//			next.ServeHTTP(w, gzipReader{Request: r, Reader: gz})
-//			defer gz.Close()
-//		} else {
-//			next.ServeHTTP(w, r)
-//		}
-//
-//	})
-//}
+func gzipRequestHandle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// переменная reader будет равна r.Body или *gzip.Reader
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			r.Body = gz
+			next.ServeHTTP(w, r)
+			defer gz.Close()
+		} else {
+			next.ServeHTTP(w, r)
+		}
+
+	})
+}
 
 func gzipResponseHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

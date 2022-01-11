@@ -1,19 +1,17 @@
 package handlers
 
 import (
-	"compress/gzip"
 	"encoding/json"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"io"
 	"net/http"
-	"strings"
 )
 
 type Repositorier interface {
-	Shorten(url string) (string, error)
+	Shorten(userID string, url string) (string, error)
 	Expand(shortURL string) (string, error)
+	SelectByUser(userID string) []repository.Entity
 }
 
 type requestURL struct {
@@ -22,51 +20,20 @@ type requestURL struct {
 type responseURL struct {
 	Result string `json:"result"`
 }
-
-//type gzipReader struct {
-//	*http.Request
-//	Reader io.Reader
-//}
-//
-//func (r gzipReader) Read(b []byte) (int, error) {
-//	return r.Reader.Read(b)
-//}
-
-type gzipWriter struct {
-	http.ResponseWriter
-	Writer io.Writer
-}
-
-func (w gzipWriter) Write(b []byte) (int, error) {
-	// w.Writer будет отвечать за gzip-сжатие, поэтому пишем в него
-	return w.Writer.Write(b)
-}
-
-func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
-	// Определяем роутер chi
-	r := chi.NewRouter()
-
-	// зададим встроенные middleware, чтобы улучшить стабильность приложения
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	// архивирование запроса/ответа gzip
-	r.Use(gzipResponseHandle)
-	r.Use(gzipRequestHandle)
-
-	// создадим суброутер
-	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlerShortenURL(repo, cfg.BaseURL))
-		r.Post("/api/shorten", handlerShortenURLAPI(repo, cfg.BaseURL))
-		r.Get("/{id}", handlerExpandURL(repo))
-	})
-	return r
+type responseUserHistory []item
+type item struct {
+	ShortUrl    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -84,7 +51,7 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		id, err := repo.Shorten(url.URL)
+		id, err := repo.Shorten(userID.String(), url.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -97,6 +64,7 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+		setCookie(w, userID)
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write(jsonResponse)
 		if err != nil {
@@ -108,6 +76,12 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 
 func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -115,7 +89,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		}
 		urlString := string(body)
 
-		id, err := repo.Shorten(urlString)
+		id, err := repo.Shorten(userID.String(), urlString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -123,6 +97,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		shortURL := baseURL + "/" + id
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		setCookie(w, userID)
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write([]byte(shortURL))
 		if err != nil {
@@ -134,6 +109,13 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 
 func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		//userID, err := getUserID(r)
+		//if err != nil {
+		//	http.Error(w, err.Error(), http.StatusInternalServerError)
+		//	return
+		//}
+		//setCookie(w, userID)
+
 		id := chi.URLParam(r, "id")
 		longURL, err := repo.Expand(id)
 		if err != nil {
@@ -145,39 +127,40 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 	}
 }
 
-func gzipRequestHandle(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer gz.Close()
-			r.Body = gz
-			next.ServeHTTP(w, r)
-		} else {
-			next.ServeHTTP(w, r)
-		}
-	})
-}
-
-func gzipResponseHandle(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// проверяем, что клиент поддерживает gzip-сжатие
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// создаём gzip.Writer поверх текущего w
-		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer gz.Close()
-		w.Header().Set("Content-Encoding", "gzip")
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
-	})
+
+		selection := repo.SelectByUser(userID.String())
+
+		setCookie(w, userID)
+		w.Header().Set("Content-Type", "application/json")
+
+		if len(selection) > 0 {
+			history := make(responseUserHistory, len(selection))
+			for i, v := range selection {
+				history[i] = item{
+					ShortUrl:    baseURL + "/" + v.ID,
+					OriginalURL: v.URL,
+				}
+			}
+			js, err := json.Marshal(history)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+			w.WriteHeader(http.StatusOK)
+			_, err = w.Write(js)
+
+		} else {
+			w.WriteHeader(http.StatusNoContent)
+			//js := "[]"
+			//_, err = w.Write([]byte(js))
+		}
+		return
+	}
 }

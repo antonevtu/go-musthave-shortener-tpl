@@ -16,11 +16,12 @@ type Repository struct {
 	fileWriter  fileWriterT
 }
 
-type storageT map[string]string
+type storageT map[string]Entity
 
 type Entity struct {
-	ID  string `json:"id"`
-	URL string `json:"url"`
+	UserID string `json:"user_id""`
+	ID     string `json:"id"`
+	URL    string `json:"url"`
 }
 
 type fileWriterT struct {
@@ -66,31 +67,35 @@ func (r *Repository) restoreFromFile(fileName string) error {
 	}
 	defer file.Close()
 	decoder := json.NewDecoder(file)
-	entity := &Entity{}
+	entity := Entity{}
 	for {
-		err = decoder.Decode(entity)
+		err = decoder.Decode(&entity)
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
 			return err
 		}
-		r.storage[entity.ID] = entity.URL
+		r.storage[entity.ID] = entity
 	}
 }
 
-func (r *Repository) Shorten(url string) (string, error) {
+func (r *Repository) Shorten(userID string, url string) (string, error) {
 	const idLen = 5
 	const attemptsNumber = 10
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
+
+	// generate and save random string ID for short url
 	for i := 0; i < attemptsNumber; i++ {
 		id := randStringRunes(idLen)
 		if _, ok := r.storage[id]; !ok {
-			r.storage[id] = url
-			err := r.fileWriter.encoder.Encode(&Entity{
-				ID:  id,
-				URL: url,
-			})
+			entity := Entity{
+				UserID: userID,
+				ID:     id,
+				URL:    url,
+			}
+			r.storage[id] = entity
+			err := r.fileWriter.encoder.Encode(&entity)
 			return id, err
 		}
 	}
@@ -100,12 +105,24 @@ func (r *Repository) Shorten(url string) (string, error) {
 func (r *Repository) Expand(id string) (string, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
-	longURL, ok := r.storage[id]
+	entity, ok := r.storage[id]
 	if ok {
-		return longURL, nil
+		return entity.URL, nil
 	} else {
-		return longURL, errors.New("a non-existent ID was requested")
+		return "", errors.New("a non-existent ID was requested")
 	}
+}
+
+func (r *Repository) SelectByUser(userId string) []Entity {
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
+	selection := make([]Entity, 0, 10)
+	for _, entity := range r.storage {
+		if userId == entity.UserID {
+			selection = append(selection, entity)
+		}
+	}
+	return selection
 }
 
 func (r *Repository) Close() {

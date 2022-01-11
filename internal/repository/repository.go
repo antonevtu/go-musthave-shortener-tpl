@@ -19,7 +19,7 @@ type Repository struct {
 type storageT map[string]Entity
 
 type Entity struct {
-	UserID string `json:"user_id""`
+	UserID string `json:"user_id"`
 	ID     string `json:"id"`
 	URL    string `json:"url"`
 }
@@ -113,12 +113,12 @@ func (r *Repository) Expand(id string) (string, error) {
 	}
 }
 
-func (r *Repository) SelectByUser(userId string) []Entity {
+func (r *Repository) SelectByUser(userID string) []Entity {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	selection := make([]Entity, 0, 10)
 	for _, entity := range r.storage {
-		if userId == entity.UserID {
+		if userID == entity.UserID {
 			selection = append(selection, entity)
 		}
 	}

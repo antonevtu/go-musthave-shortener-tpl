@@ -22,7 +22,7 @@ type responseURL struct {
 }
 type responseUserHistory []item
 type item struct {
-	ShortUrl    string `json:"short_url"`
+	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
@@ -144,7 +144,7 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 			history := make(responseUserHistory, len(selection))
 			for i, v := range selection {
 				history[i] = item{
-					ShortUrl:    baseURL + "/" + v.ID,
+					ShortURL:    baseURL + "/" + v.ID,
 					OriginalURL: v.URL,
 				}
 			}
@@ -155,12 +155,13 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 
 			w.WriteHeader(http.StatusOK)
 			_, err = w.Write(js)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		} else {
 			w.WriteHeader(http.StatusNoContent)
-			//js := "[]"
-			//_, err = w.Write([]byte(js))
 		}
-		return
 	}
 }

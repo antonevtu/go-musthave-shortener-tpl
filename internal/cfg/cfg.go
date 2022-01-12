@@ -9,6 +9,7 @@ type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
 	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"./storage.txt"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 func New() (Config, error) {
@@ -30,6 +31,10 @@ func New() (Config, error) {
 		return nil
 	})
 	flag.Func("f", "path to storage file", func(flagValue string) error {
+		cfg.FileStoragePath = flagValue
+		return nil
+	})
+	flag.Func("d", "postgres url", func(flagValue string) error {
 		cfg.FileStoragePath = flagValue
 		return nil
 	})

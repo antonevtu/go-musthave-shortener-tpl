@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -162,6 +164,17 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 
 		} else {
 			w.WriteHeader(http.StatusNoContent)
+		}
+	}
+}
+
+func handlerPingDB() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := db.DbPool.Ping(context.Background())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
 		}
 	}
 }

@@ -35,7 +35,7 @@ func New() (Config, error) {
 		return nil
 	})
 	flag.Func("d", "postgres url", func(flagValue string) error {
-		cfg.FileStoragePath = flagValue
+		cfg.DatabaseDSN = flagValue
 		return nil
 	})
 

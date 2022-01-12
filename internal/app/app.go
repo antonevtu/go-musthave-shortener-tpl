@@ -24,12 +24,12 @@ func Run() {
 	}
 
 	// database
-	db.DbPool, err = pgxpool.Connect(context.Background(), cfgApp.DatabaseDSN)
+	db.DBPool, err = pgxpool.Connect(context.Background(), cfgApp.DatabaseDSN)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
-	defer db.DbPool.Close()
+	defer db.DBPool.Close()
 
 	// repository
 	repo, err := repository.New(cfgApp.FileStoragePath)

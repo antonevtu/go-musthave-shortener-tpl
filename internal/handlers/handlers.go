@@ -170,7 +170,7 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 
 func handlerPingDB() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := db.DbPool.Ping(context.Background())
+		err := db.DBPool.Ping(context.Background())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {

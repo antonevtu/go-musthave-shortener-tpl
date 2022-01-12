@@ -2,4 +2,4 @@ package db
 
 import "github.com/jackc/pgx/v4/pgxpool"
 
-var DbPool *pgxpool.Pool
+var DBPool *pgxpool.Pool

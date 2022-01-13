@@ -22,7 +22,7 @@ func (d *T) New(ctx context.Context, url string) error {
 	}
 
 	// создание таблицы
-	sql1 := "create table if not exists urls (user_id varchar(32) not null, short_path varchar(32) not null, long_url varchar(512) not null)"
+	sql1 := "create table if not exists urls (user_id varchar(512) not null, short_path varchar(512) not null, long_url varchar(1024) not null)"
 	_, err = d.Exec(context.Background(), sql1)
 	if err != nil {
 		panic(err)
@@ -32,7 +32,7 @@ func (d *T) New(ctx context.Context, url string) error {
 }
 
 func (d *T) Shorten(ctx context.Context, e repository.Entity) error {
-	sql := "insert into urls1 values ($1, $2, $3)"
+	sql := "insert into urls values ($1, $2, $3)"
 	_, err := Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
 	return err
 }

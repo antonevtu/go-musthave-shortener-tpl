@@ -2,12 +2,10 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"net"
 	"net/http"
@@ -23,13 +21,15 @@ func Run() {
 		log.Fatal(err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// database
-	db.DBPool, err = pgxpool.Connect(context.Background(), cfgApp.DatabaseDSN)
+	err = db.Pool.New(ctx, cfgApp.DatabaseDSN)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
-	defer db.DBPool.Close()
+	defer db.Pool.Close()
 
 	// repository
 	repo, err := repository.New(cfgApp.FileStoragePath)
@@ -39,10 +39,6 @@ func Run() {
 	defer repo.Close()
 
 	r := handlers.NewRouter(repo, cfgApp)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	httpServer := &http.Server{
 		Addr:        cfgApp.ServerAddress,
 		Handler:     r,

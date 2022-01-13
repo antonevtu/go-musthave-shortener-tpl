@@ -6,12 +6,13 @@ import (
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 )
 
 type Repositorier interface {
-	Shorten(userID string, url string) (string, error)
+	Shorten(userID string, id string, url string) error
 	Expand(shortURL string) (string, error)
 	SelectByUser(userID string) []repository.Entity
 }
@@ -53,11 +54,13 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		id, err := repo.Shorten(userID.String(), url.URL)
+		id := uuid.NewString()
+		err = repo.Shorten(userID.String(), id, url.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		response := responseURL{Result: baseURL + "/" + id}
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
@@ -91,7 +94,8 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		}
 		urlString := string(body)
 
-		id, err := repo.Shorten(userID.String(), urlString)
+		id := uuid.NewString()
+		err = repo.Shorten(userID.String(), id, urlString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -170,7 +174,7 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 
 func handlerPingDB() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := db.DBPool.Ping(context.Background())
+		err := db.Pool.Ping(context.Background())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {

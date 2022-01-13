@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"math/rand"
 	"os"
 	"sync"
-	"time"
 )
 
 type Repository struct {
@@ -79,27 +77,35 @@ func (r *Repository) restoreFromFile(fileName string) error {
 	}
 }
 
-func (r *Repository) Shorten(userID string, url string) (string, error) {
+func (r *Repository) Shorten(userID string, id string, url string) error {
 	const idLen = 5
 	const attemptsNumber = 10
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 
 	// generate and save random string ID for short url
-	for i := 0; i < attemptsNumber; i++ {
-		id := randStringRunes(idLen)
-		if _, ok := r.storage[id]; !ok {
-			entity := Entity{
-				UserID: userID,
-				ID:     id,
-				URL:    url,
-			}
-			r.storage[id] = entity
-			err := r.fileWriter.encoder.Encode(&entity)
-			return id, err
-		}
+	//for i := 0; i < attemptsNumber; i++ {
+	//	id := randStringRunes(idLen)
+	//	if _, ok := r.storage[id]; !ok {
+	//		entity := Entity{
+	//			UserID: userID,
+	//			ID:     id,
+	//			URL:    url,
+	//		}
+	//		r.storage[id] = entity
+	//		err := r.fileWriter.encoder.Encode(&entity)
+	//		return id, err
+	//	}
+	//}
+
+	entity := Entity{
+		UserID: userID,
+		ID:     id,
+		URL:    url,
 	}
-	return "", errors.New("can't generate random ID")
+	r.storage[id] = entity
+	err := r.fileWriter.encoder.Encode(&entity)
+	return err
 }
 
 func (r *Repository) Expand(id string) (string, error) {
@@ -129,12 +135,12 @@ func (r *Repository) Close() {
 	_ = r.fileWriter.file.Close()
 }
 
-func randStringRunes(n int) string {
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-	rand.Seed(time.Now().UnixNano())
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
+//func randStringRunes(n int) string {
+//	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+//	rand.Seed(time.Now().UnixNano())
+//	b := make([]rune, n)
+//	for i := range b {
+//		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+//	}
+//	return string(b)
+//}

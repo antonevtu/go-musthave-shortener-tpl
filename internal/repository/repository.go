@@ -104,7 +104,8 @@ func (r *Repository) Shorten(userID string, id string, url string) error {
 		URL:    url,
 	}
 	r.storage[id] = entity
-	err := r.fileWriter.encoder.Encode(&entity)
+	var err error
+	//err = r.fileWriter.encoder.Encode(&entity)
 	return err
 }
 

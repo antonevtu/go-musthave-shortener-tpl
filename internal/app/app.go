@@ -38,8 +38,8 @@ func Run() {
 	}
 	defer repo.Close()
 
-	//r := handlers.NewRouter(repo, cfgApp)
-	r := handlers.NewRouter(&db.Pool, cfgApp)
+	r := handlers.NewRouter(repo, cfgApp)
+	//r := handlers.NewRouter(&db.Pool, cfgApp)
 	httpServer := &http.Server{
 		Addr:        cfgApp.ServerAddress,
 		Handler:     r,

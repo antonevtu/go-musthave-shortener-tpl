@@ -86,14 +86,13 @@ func (d *T) Flush(ctx context.Context, userID string, data BatchInput) error {
 		return err
 	}
 
-	//stmt, err := tx.Prepare(ctx, "batch", "insert into urls(user_id, short_path, long_url) VALUES($1, $2, $3)")
-	//if err != nil {
-	//	return err
-	//}
-	sql := "insert into urls(user_id, short_path, long_url) VALUES($1, $2, $3)"
+	stmt, err := tx.Prepare(ctx, "batch", "insert into urls(user_id, short_path, long_url) VALUES($1, $2, $3)")
+	if err != nil {
+		return err
+	}
 
 	for _, v := range data {
-		if _, err = d.Exec(ctx, sql, userID, v.ShortPath, v.OriginalURL); err != nil {
+		if _, err = tx.Exec(ctx, stmt.Name, userID, v.ShortPath, v.OriginalURL); err != nil {
 			if err = tx.Rollback(ctx); err != nil {
 				log.Fatalf("update drivers: unable to rollback: %v", err)
 			}

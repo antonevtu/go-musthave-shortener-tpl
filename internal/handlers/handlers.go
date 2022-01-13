@@ -9,12 +9,13 @@ import (
 	"github.com/google/uuid"
 	"io"
 	"net/http"
+	"time"
 )
 
 type Repositorier interface {
-	Shorten(userID string, id string, url string) error
-	Expand(shortURL string) (string, error)
-	SelectByUser(userID string) []repository.Entity
+	Shorten(ctx context.Context, entity repository.Entity) error
+	Expand(ctx context.Context, shortURL string) (string, error)
+	SelectByUser(ctx context.Context, userID string) ([]repository.Entity, error)
 }
 
 type requestURL struct {
@@ -55,7 +56,9 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 		}
 
 		id := uuid.NewString()
-		err = repo.Shorten(userID.String(), id, url.URL)
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		err = repo.Shorten(ctx, repository.Entity{userID.String(), id, url.URL})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -95,7 +98,9 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		urlString := string(body)
 
 		id := uuid.NewString()
-		err = repo.Shorten(userID.String(), id, urlString)
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		err = repo.Shorten(ctx, repository.Entity{userID.String(), id, urlString})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -123,7 +128,9 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 		//setCookie(w, userID)
 
 		id := chi.URLParam(r, "id")
-		longURL, err := repo.Expand(id)
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		longURL, err := repo.Expand(ctx, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -141,7 +148,13 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		selection := repo.SelectByUser(userID.String())
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		selection, err := repo.SelectByUser(ctx, userID.String())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		setCookie(w, userID)
 		w.Header().Set("Content-Type", "application/json")

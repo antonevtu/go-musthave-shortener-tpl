@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-type Entity repository.Entity
+//type Entity repository.Entity
 
 type T struct {
 	*pgxpool.Pool
@@ -31,19 +31,34 @@ func (d *T) New(ctx context.Context, url string) error {
 	return err
 }
 
-func addEntity(ctx context.Context, e Entity) error {
+func (d *T) Shorten(ctx context.Context, e repository.Entity) error {
 	sql := "insert into urls1 values ($1, $2, $3)"
 	_, err := Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
 	return err
 }
 
-func SelectByUser(ctx context.Context, userID string) ([]Entity, error) {
+func (d *T) Expand(ctx context.Context, id string) (string, error) {
+	rows, err := Pool.Query(ctx, "select * from urls where short_path = $1", id)
+	if err != nil {
+		return "", err
+	}
+	longURL := ""
+	for rows.Next() {
+		err = rows.Scan(&longURL)
+		if err != nil {
+			return "", err
+		}
+	}
+	return longURL, nil
+}
+
+func (d *T) SelectByUser(ctx context.Context, userID string) ([]repository.Entity, error) {
 	rows, err := Pool.Query(ctx, "select * from urls where user_id = $1", userID)
 	if err != nil {
 		return nil, err
 	}
-	e := Entity{}
-	eArray := make([]Entity, 0, 10)
+	e := repository.Entity{}
+	eArray := make([]repository.Entity, 0, 10)
 	for rows.Next() {
 		err = rows.Scan(&e.UserID, &e.ID, &e.URL)
 		if err != nil {

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -14,13 +15,13 @@ type Repository struct {
 	fileWriter  fileWriterT
 }
 
-type storageT map[string]Entity
-
 type Entity struct {
 	UserID string `json:"user_id"`
 	ID     string `json:"id"`
 	URL    string `json:"url"`
 }
+
+type storageT map[string]Entity
 
 type fileWriterT struct {
 	file    *os.File
@@ -77,9 +78,9 @@ func (r *Repository) restoreFromFile(fileName string) error {
 	}
 }
 
-func (r *Repository) Shorten(userID string, id string, url string) error {
-	const idLen = 5
-	const attemptsNumber = 10
+func (r *Repository) Shorten(_ context.Context, entity Entity) error {
+	//const idLen = 5
+	//const attemptsNumber = 10
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 
@@ -98,18 +99,12 @@ func (r *Repository) Shorten(userID string, id string, url string) error {
 	//	}
 	//}
 
-	entity := Entity{
-		UserID: userID,
-		ID:     id,
-		URL:    url,
-	}
-	r.storage[id] = entity
-	var err error
-	//err = r.fileWriter.encoder.Encode(&entity)
+	r.storage[entity.ID] = entity
+	err := r.fileWriter.encoder.Encode(&entity)
 	return err
 }
 
-func (r *Repository) Expand(id string) (string, error) {
+func (r *Repository) Expand(_ context.Context, id string) (string, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	entity, ok := r.storage[id]
@@ -120,7 +115,7 @@ func (r *Repository) Expand(id string) (string, error) {
 	}
 }
 
-func (r *Repository) SelectByUser(userID string) []Entity {
+func (r *Repository) SelectByUser(_ context.Context, userID string) ([]Entity, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	selection := make([]Entity, 0, 10)
@@ -129,7 +124,7 @@ func (r *Repository) SelectByUser(userID string) []Entity {
 			selection = append(selection, entity)
 		}
 	}
-	return selection
+	return selection, nil
 }
 
 func (r *Repository) Close() {

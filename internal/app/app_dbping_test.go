@@ -1,9 +1,8 @@
 package app
 
 import (
-	"context"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -13,9 +12,9 @@ import (
 
 func TestDBPing(t *testing.T) {
 	var cfgApp = config(t)
-	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)
+	repo, err := repository.New(cfgApp.FileStoragePath)
 	assert.Equal(t, err, nil)
-	r := handlers.NewRouter(&db.Pool, cfgApp)
+	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

@@ -58,7 +58,7 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 		id := uuid.NewString()
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		err = repo.Shorten(ctx, repository.Entity{userID.String(), id, url.URL})
+		err = repo.Shorten(ctx, repository.Entity{UserID: userID.String(), ID: id, URL: url.URL})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -100,7 +100,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		id := uuid.NewString()
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		err = repo.Shorten(ctx, repository.Entity{userID.String(), id, urlString})
+		err = repo.Shorten(ctx, repository.Entity{UserID: userID.String(), ID: id, URL: urlString})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

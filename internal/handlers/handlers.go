@@ -128,7 +128,7 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 		//setCookie(w, userID)
 
 		id := chi.URLParam(r, "id")
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 500*time.Second)
 		defer cancel()
 		longURL, err := repo.Expand(ctx, id)
 		if err != nil {

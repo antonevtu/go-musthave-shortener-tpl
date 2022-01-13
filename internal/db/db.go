@@ -38,7 +38,7 @@ func (d *T) Shorten(ctx context.Context, e repository.Entity) error {
 }
 
 func (d *T) Expand(ctx context.Context, id string) (string, error) {
-	rows, err := Pool.Query(ctx, "select * from urls where short_path = $1", id)
+	rows, err := Pool.Query(ctx, "select long_url from urls where short_path = $1", id)
 	if err != nil {
 		return "", err
 	}

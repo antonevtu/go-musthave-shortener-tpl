@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 )
 
@@ -29,6 +31,68 @@ import (
 //	defer resp.Body.Close()
 //
 //}
+
+func TestDBJSONAPI(t *testing.T) {
+	cfgApp := config(t)
+	//_ = os.Remove(cfgApp.FileStoragePath)
+
+	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)
+	assert.Equal(t, err, nil)
+
+	r := handlers.NewRouter(&db.Pool, cfgApp)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	// Create ID1
+	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
+	buf := testEncodeJSONLongURL(longURL)
+	resp, shortURLInJSON := testRequest(t, ts.URL+"/api/shorten", "POST", buf)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// Parse shortURL
+	shortURL := testDecodeJSONShortURL(t, shortURLInJSON)
+	_, err = url.Parse(shortURL)
+	require.NoError(t, err)
+
+	// Create ID2
+	longURL = "https://habr.com/ru/all/"
+	buf = testEncodeJSONLongURL(longURL)
+	resp, shortURLInJSON = testRequest(t, ts.URL+"/api/shorten", "POST", buf)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// Parse shortURL
+	shortURL = testDecodeJSONShortURL(t, shortURLInJSON)
+	u, err := url.Parse(shortURL)
+	require.NoError(t, err)
+
+	// Check redirection by existing ID
+	resp, _ = testRequest(t, ts.URL+u.Path, "GET", nil)
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+	longURLRecovered := resp.Header.Get("Location")
+	assert.Equal(t, longURL, longURLRecovered)
+
+	// Check StatusBadRequest for incorrect JSON key in request
+	badJSON := `{"urlBad":"abc"}`
+	resp, _ = testRequest(t, ts.URL+"/api/shorten", "POST", bytes.NewBufferString(badJSON))
+	err = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// Check server returns correct baseURL
+	baseURL := u.Scheme + "://" + u.Host
+	assert.Equal(t, baseURL, cfgApp.BaseURL)
+
+	// Check storage file created
+	file, err := os.Open(cfgApp.FileStoragePath)
+	assert.Equal(t, err, nil)
+	defer file.Close()
+}
 
 func TestDBCookie(t *testing.T) {
 	cfgApp := config(t)

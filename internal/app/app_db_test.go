@@ -4,16 +4,27 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"os"
 	"testing"
 )
+
+type batchInput []batchInputItem
+type batchInputItem struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+type batchOutput []batchOutputItem
+type batchOutputItem struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
 
 func TestDBBatch(t *testing.T) {
 	var cfgApp = config(t)
@@ -23,16 +34,28 @@ func TestDBBatch(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
+	batch := make(batchInput, 3)
+	batch[0] = batchInputItem{CorrelationID: "0", OriginalURL: "https://yandex.ru/aaaa"}
+	batch[1] = batchInputItem{CorrelationID: "1", OriginalURL: "https://yandex.ru/bbbb"}
+	batch[2] = batchInputItem{CorrelationID: "2", OriginalURL: "https://yandex.ru/cccc"}
+	jsonBatch, err := json.Marshal(batch)
+	require.NoError(t, err)
+
+
+
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, ts.URL+"/ping", nil)
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/shorten/batch", bytes.NewBuffer(jsonBatch))
 	require.NoError(t, err)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, resp.StatusCode, http.StatusOK)
+	require.Equal(t, resp.StatusCode, http.StatusCreated)
 	defer resp.Body.Close()
 
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	_ = respBody
 }
-
+/*
 func TestDBPing(t *testing.T) {
 	var cfgApp = config(t)
 	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)

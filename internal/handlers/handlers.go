@@ -228,7 +228,7 @@ func handlerShortenURLAPIBatch(repo Repositorier, baseURL string) http.HandlerFu
 			input[i].ShortPath = uuid.NewString()
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 500*time.Second)
 		defer cancel()
 		err = repo.Flush(ctx, userID.String(), input)
 		if err != nil {

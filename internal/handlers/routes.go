@@ -27,6 +27,7 @@ func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 		r.Get("/{id}", handlerExpandURL(repo))
 		r.Get("/user/urls", handlerUserHistory(repo, cfg.BaseURL))
 		r.Get("/ping", handlerPingDB())
+		r.Post("/api/shorten/batch", handlerShortenURLAPIBatch(repo, cfg.BaseURL))
 	})
 	return r
 }

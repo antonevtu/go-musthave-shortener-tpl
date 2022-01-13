@@ -2,14 +2,25 @@ package db
 
 import (
 	"context"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"log"
 )
-
-//type Entity repository.Entity
 
 type T struct {
 	*pgxpool.Pool
+}
+
+type Entity struct {
+	UserID string `json:"user_id"`
+	ID     string `json:"id"`
+	URL    string `json:"url"`
+}
+
+type BatchInput []BatchInputItem
+type BatchInputItem struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+	ShortPath     string `json:"-"`
 }
 
 var Pool T
@@ -31,7 +42,7 @@ func (d *T) New(ctx context.Context, url string) error {
 	return err
 }
 
-func (d *T) Shorten(ctx context.Context, e repository.Entity) error {
+func (d *T) Shorten(ctx context.Context, e Entity) error {
 	sql := "insert into urls values ($1, $2, $3)"
 	_, err := Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
 	return err
@@ -52,13 +63,13 @@ func (d *T) Expand(ctx context.Context, id string) (string, error) {
 	return longURL, nil
 }
 
-func (d *T) SelectByUser(ctx context.Context, userID string) ([]repository.Entity, error) {
+func (d *T) SelectByUser(ctx context.Context, userID string) ([]Entity, error) {
 	rows, err := Pool.Query(ctx, "select * from urls where user_id = $1", userID)
 	if err != nil {
 		return nil, err
 	}
-	e := repository.Entity{}
-	eArray := make([]repository.Entity, 0, 10)
+	e := Entity{}
+	eArray := make([]Entity, 0, 10)
 	for rows.Next() {
 		err = rows.Scan(&e.UserID, &e.ID, &e.URL)
 		if err != nil {
@@ -67,4 +78,30 @@ func (d *T) SelectByUser(ctx context.Context, userID string) ([]repository.Entit
 		eArray = append(eArray, e)
 	}
 	return eArray, nil
+}
+
+func (d *T) Flush(ctx context.Context, userID string, data BatchInput) error {
+	tx, err := d.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(ctx, "batch", "insert into urls(user_id, short_path, long_url) VALUES($1, $2, $3)")
+	if err != nil {
+		return err
+	}
+
+	for _, v := range data {
+		if _, err = d.Exec(ctx, stmt.Name, userID, v.ShortPath, v.OriginalURL); err != nil {
+			if err = tx.Rollback(ctx); err != nil {
+				log.Fatalf("update drivers: unable to rollback: %v", err)
+			}
+			return err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Fatalf("update drivers: unable to commit: %v", err)
+	}
+	return err
 }

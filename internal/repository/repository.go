@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"io"
 	"os"
 	"sync"
@@ -15,13 +16,7 @@ type Repository struct {
 	fileWriter  fileWriterT
 }
 
-type Entity struct {
-	UserID string `json:"user_id"`
-	ID     string `json:"id"`
-	URL    string `json:"url"`
-}
-
-type storageT map[string]Entity
+type storageT map[string]db.Entity
 
 type fileWriterT struct {
 	file    *os.File
@@ -66,7 +61,7 @@ func (r *Repository) restoreFromFile(fileName string) error {
 	}
 	defer file.Close()
 	decoder := json.NewDecoder(file)
-	entity := Entity{}
+	entity := db.Entity{}
 	for {
 		err = decoder.Decode(&entity)
 		if err == io.EOF {
@@ -78,7 +73,7 @@ func (r *Repository) restoreFromFile(fileName string) error {
 	}
 }
 
-func (r *Repository) Shorten(_ context.Context, entity Entity) error {
+func (r *Repository) Shorten(_ context.Context, entity db.Entity) error {
 	//const idLen = 5
 	//const attemptsNumber = 10
 	r.storageLock.Lock()
@@ -115,10 +110,10 @@ func (r *Repository) Expand(_ context.Context, id string) (string, error) {
 	}
 }
 
-func (r *Repository) SelectByUser(_ context.Context, userID string) ([]Entity, error) {
+func (r *Repository) SelectByUser(_ context.Context, userID string) ([]db.Entity, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
-	selection := make([]Entity, 0, 10)
+	selection := make([]db.Entity, 0, 10)
 	for _, entity := range r.storage {
 		if userID == entity.UserID {
 			selection = append(selection, entity)
@@ -129,6 +124,10 @@ func (r *Repository) SelectByUser(_ context.Context, userID string) ([]Entity, e
 
 func (r *Repository) Close() {
 	_ = r.fileWriter.file.Close()
+}
+
+func (r *Repository) Flush(_ context.Context, _ string, _ db.BatchInput) error {
+	return errors.New("batches not supported")
 }
 
 //func randStringRunes(n int) string {

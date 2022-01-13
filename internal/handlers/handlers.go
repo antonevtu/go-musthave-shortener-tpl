@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"io"
@@ -13,9 +12,10 @@ import (
 )
 
 type Repositorier interface {
-	Shorten(ctx context.Context, entity repository.Entity) error
+	Shorten(ctx context.Context, entity db.Entity) error
 	Expand(ctx context.Context, shortURL string) (string, error)
-	SelectByUser(ctx context.Context, userID string) ([]repository.Entity, error)
+	SelectByUser(ctx context.Context, userID string) ([]db.Entity, error)
+	Flush(ctx context.Context, userID string, input db.BatchInput) error
 }
 
 type requestURL struct {
@@ -58,7 +58,7 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 		id := uuid.NewString()
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		err = repo.Shorten(ctx, repository.Entity{UserID: userID.String(), ID: id, URL: url.URL})
+		err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: url.URL})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -100,7 +100,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		id := uuid.NewString()
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		err = repo.Shorten(ctx, repository.Entity{UserID: userID.String(), ID: id, URL: urlString})
+		err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: urlString})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -192,6 +192,69 @@ func handlerPingDB() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusOK)
+		}
+	}
+}
+
+type batchOutput []batchOutputItem
+type batchOutputItem struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
+func handlerShortenURLAPIBatch(repo Repositorier, baseURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		input := db.BatchInput{}
+		err = json.Unmarshal(body, &input)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// generate ID's for short URL's
+		for i := range input {
+			input[i].ShortPath = uuid.NewString()
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		err = repo.Flush(ctx, userID.String(), input)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		output := make(batchOutput, len(input))
+		for i := range input {
+			output[i].ShortURL = baseURL + "/" + input[i].ShortPath
+			output[i].CorrelationID = input[i].CorrelationID
+		}
+
+		jsonResponse, err := json.Marshal(output)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		setCookie(w, userID)
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 }

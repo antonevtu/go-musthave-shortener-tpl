@@ -60,18 +60,14 @@ func (d *T) Shorten(ctx context.Context, e Entity) (conflict bool, shortPath str
 		return false, shortPath, err
 	}
 
-	// TODO: разобраться как сделать это правильно
-	if err.Error() == "ОШИБКА: повторяющееся значение ключа нарушает ограничение уникальности \"urls_long_url_key\" (SQLSTATE 23505)" {
-		row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
-		err = row.Scan(&shortPath)
-		if err != nil {
-			return false, shortPath, err
-		}
-		return true, shortPath, nil
-
+	// TODO: разобраться как отловить ошибку конфликта записей
+	// Запрос short_path по существующему long_url
+	row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
+	err = row.Scan(&shortPath)
+	if err != nil {
+		return false, shortPath, err
 	}
-
-	return false, shortPath, nil
+	return true, shortPath, nil
 }
 
 func (d *T) Expand(ctx context.Context, id string) (string, error) {

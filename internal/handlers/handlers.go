@@ -12,7 +12,7 @@ import (
 )
 
 type Repositorier interface {
-	Shorten(ctx context.Context, entity db.Entity) error
+	Shorten(ctx context.Context, entity db.Entity) (conflict bool, shortPath string, err error)
 	Expand(ctx context.Context, shortURL string) (string, error)
 	SelectByUser(ctx context.Context, userID string) ([]db.Entity, error)
 	Flush(ctx context.Context, userID string, input db.BatchInput) error
@@ -30,7 +30,9 @@ type item struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
+const timeout = 600
+
+func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getUserID(r)
 		if err != nil {
@@ -44,26 +46,39 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		url := requestURL{}
-		err = json.Unmarshal(body, &url)
+		longURL := requestURL{}
+		err = json.Unmarshal(body, &longURL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if url.URL == "" {
+		if longURL.URL == "" {
 			http.Error(w, `no key "url" or empty request`, http.StatusBadRequest)
 			return
 		}
 
-		id := uuid.NewString()
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		id := uuid.NewString() // ID короткого URL
+
+		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
+		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: url.URL})
+		var conflict bool
+		var idExisting string
+		conflict, idExisting, err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL.URL})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
+		var statusCode int
+		if conflict {
+			id = idExisting
+			statusCode = http.StatusConflict
+		} else {
+			statusCode = http.StatusCreated
+		}
+
+		// Ответ на запрос
 		response := responseURL{Result: baseURL + "/" + id}
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
@@ -73,7 +88,7 @@ func handlerShortenURLAPI(repo Repositorier, baseURL string) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		setCookie(w, userID)
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(statusCode)
 		_, err = w.Write(jsonResponse)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -95,21 +110,34 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		urlString := string(body)
+		longURL := string(body)
 
 		id := uuid.NewString()
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+
+		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
+		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: urlString})
+		var conflict bool
+		var idExisting string
+		conflict, idExisting, err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		var statusCode int
+		if conflict {
+			id = idExisting
+			statusCode = http.StatusConflict
+		} else {
+			statusCode = http.StatusCreated
+		}
+
 		shortURL := baseURL + "/" + id
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		setCookie(w, userID)
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(statusCode)
 		_, err = w.Write([]byte(shortURL))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -128,7 +156,7 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 		//setCookie(w, userID)
 
 		id := chi.URLParam(r, "id")
-		ctx, cancel := context.WithTimeout(r.Context(), 500*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
 		longURL, err := repo.Expand(ctx, id)
 		if err != nil {
@@ -148,7 +176,7 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
 		selection, err := repo.SelectByUser(ctx, userID.String())
 		if err != nil {
@@ -228,7 +256,7 @@ func handlerShortenURLAPIBatch(repo Repositorier, baseURL string) http.HandlerFu
 			input[i].ShortPath = uuid.NewString()
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 500*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
 		err = repo.Flush(ctx, userID.String(), input)
 		if err != nil {

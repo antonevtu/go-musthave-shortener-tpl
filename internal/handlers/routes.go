@@ -23,7 +23,7 @@ func NewRouter(repo Repositorier, cfg cfg.Config) chi.Router {
 	// создадим суброутер
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", handlerShortenURL(repo, cfg.BaseURL))
-		r.Post("/api/shorten", handlerShortenURLAPI(repo, cfg.BaseURL))
+		r.Post("/api/shorten", handlerShortenURLJSONAPI(repo, cfg.BaseURL))
 		r.Get("/{id}", handlerExpandURL(repo))
 		r.Get("/user/urls", handlerUserHistory(repo, cfg.BaseURL))
 		r.Get("/ping", handlerPingDB())

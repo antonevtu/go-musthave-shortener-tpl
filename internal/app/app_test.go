@@ -222,12 +222,12 @@ func testEncodeJSONLongURL(url string) *bytes.Buffer {
 }
 
 func testDecodeJSONShortURL(t *testing.T, js string) string {
-	url := struct {
+	url_ := struct {
 		Result string `json:"result"`
 	}{}
-	err := json.Unmarshal([]byte(js), &url)
+	err := json.Unmarshal([]byte(js), &url_)
 	require.NoError(t, err)
-	return url.Result
+	return url_.Result
 }
 
 func config(t *testing.T) cfg.Config {

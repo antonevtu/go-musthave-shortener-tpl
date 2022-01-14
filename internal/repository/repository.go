@@ -73,30 +73,12 @@ func (r *Repository) restoreFromFile(fileName string) error {
 	}
 }
 
-func (r *Repository) Shorten(_ context.Context, entity db.Entity) error {
-	//const idLen = 5
-	//const attemptsNumber = 10
+func (r *Repository) Shorten(_ context.Context, entity db.Entity) (_ bool, _ string, err error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
-
-	// generate and save random string ID for short url
-	//for i := 0; i < attemptsNumber; i++ {
-	//	id := randStringRunes(idLen)
-	//	if _, ok := r.storage[id]; !ok {
-	//		entity := Entity{
-	//			UserID: userID,
-	//			ID:     id,
-	//			URL:    url,
-	//		}
-	//		r.storage[id] = entity
-	//		err := r.fileWriter.encoder.Encode(&entity)
-	//		return id, err
-	//	}
-	//}
-
 	r.storage[entity.ID] = entity
-	err := r.fileWriter.encoder.Encode(&entity)
-	return err
+	err = r.fileWriter.encoder.Encode(&entity)
+	return false, "", err
 }
 
 func (r *Repository) Expand(_ context.Context, id string) (string, error) {

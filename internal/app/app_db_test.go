@@ -7,11 +7,14 @@ import (
 	"encoding/json"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"testing"
 )
 
@@ -55,7 +58,8 @@ func TestDBBatch(t *testing.T) {
 	require.NoError(t, err)
 	_ = respBody
 }
-/*
+
+///*
 func TestDBPing(t *testing.T) {
 	var cfgApp = config(t)
 	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)
@@ -86,7 +90,7 @@ func TestDBJSONAPI(t *testing.T) {
 	defer ts.Close()
 
 	// Create ID1
-	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
+	longURL := "https://yandex.ru/" + uuid.NewString()
 	buf := testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON := testRequest(t, ts.URL+"/api/shorten", "POST", buf)
 	err = resp.Body.Close()
@@ -99,12 +103,12 @@ func TestDBJSONAPI(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create ID2
-	longURL = "https://habr.com/ru/all/"
+	//longURL = "https://habr.com/ru/all/"
 	buf = testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON = testRequest(t, ts.URL+"/api/shorten", "POST", buf)
 	err = resp.Body.Close()
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, http.StatusConflict, resp.StatusCode)
 
 	// Parse shortURL
 	shortURL = testDecodeJSONShortURL(t, shortURLInJSON)
@@ -147,7 +151,7 @@ func TestDBCookie(t *testing.T) {
 	defer ts.Close()
 
 	// Create ID1
-	longURL := "https://yandex.ru/maps/geo/sochi/53166566/?ll=39.580041%2C43.713351&z=9.98"
+	longURL := "https://yandex.ru/" + uuid.NewString()
 	buf := testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON := testGZipRequest(t, ts.URL+"/api/shorten", "POST", buf)
 	cookies := resp.Cookies()
@@ -165,7 +169,7 @@ func TestDBCookie(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create ID2
-	longURL = "https://habr.com/ru/all/"
+	longURL = "https://yandex.ru/" + uuid.NewString()
 	buf = testEncodeJSONLongURL(longURL)
 	resp, shortURLInJSON = testGZipRequestCookie(t, ts.URL+"/api/shorten", "POST", buf, cookies)
 	//cookies = resp.Cookies()

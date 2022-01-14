@@ -33,7 +33,11 @@ func (d *T) New(ctx context.Context, url string) error {
 	}
 
 	// создание таблицы
-	sql1 := "create table if not exists urls (user_id varchar(512) not null, short_path varchar(512) not null, long_url varchar(1024) not null)"
+	sql1 := "create table if not exists urls (" +
+		"id serial primary key, " +
+		"user_id varchar(512) not null, " +
+		"short_path varchar(512) not null, " +
+		"long_url varchar(1024) not null unique)"
 	_, err = d.Exec(context.Background(), sql1)
 	if err != nil {
 		panic(err)
@@ -42,14 +46,29 @@ func (d *T) New(ctx context.Context, url string) error {
 	return err
 }
 
-func (d *T) Shorten(ctx context.Context, e Entity) error {
-	sql := "insert into urls values ($1, $2, $3)"
-	_, err := Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
-	return err
+func (d *T) Shorten(ctx context.Context, e Entity) (conflict bool, shortPath string, err error) {
+	sql := "insert into urls values (default, $1, $2, $3)"
+	_, err = Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
+	if err == nil {
+		return false, shortPath, err
+	}
+
+	// TODO: разобраться как сделать это правильно
+	if err.Error() == "ОШИБКА: повторяющееся значение ключа нарушает ограничение уникальности \"urls_long_url_key\" (SQLSTATE 23505)" {
+		row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
+		err = row.Scan(&shortPath)
+		if err != nil {
+			return false, shortPath, err
+		}
+		return true, shortPath, nil
+
+	}
+
+	return false, shortPath, nil
 }
 
 func (d *T) Expand(ctx context.Context, id string) (string, error) {
-	rows, err := Pool.Query(ctx, "select long_url from urls where short_path = $1", id)
+	rows, err := d.Pool.Query(ctx, "select long_url from urls where short_path = $1", id)
 	if err != nil {
 		return "", err
 	}
@@ -64,14 +83,15 @@ func (d *T) Expand(ctx context.Context, id string) (string, error) {
 }
 
 func (d *T) SelectByUser(ctx context.Context, userID string) ([]Entity, error) {
-	rows, err := Pool.Query(ctx, "select * from urls where user_id = $1", userID)
+	rows, err := d.Pool.Query(ctx, "select * from urls where user_id = $1", userID)
 	if err != nil {
 		return nil, err
 	}
 	e := Entity{}
+	var rowId int
 	eArray := make([]Entity, 0, 10)
 	for rows.Next() {
-		err = rows.Scan(&e.UserID, &e.ID, &e.URL)
+		err = rows.Scan(&rowId, &e.UserID, &e.ID, &e.URL)
 		if err != nil {
 			return nil, err
 		}

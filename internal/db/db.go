@@ -87,11 +87,11 @@ func (d *T) SelectByUser(ctx context.Context, userID string) ([]Entity, error) {
 	if err != nil {
 		return nil, err
 	}
-	e := Entity{}
-	var rowId int
+	var e Entity
+	var rowID int
 	eArray := make([]Entity, 0, 10)
 	for rows.Next() {
-		err = rows.Scan(&rowId, &e.UserID, &e.ID, &e.URL)
+		err = rows.Scan(&rowID, &e.UserID, &e.ID, &e.URL)
 		if err != nil {
 			return nil, err
 		}

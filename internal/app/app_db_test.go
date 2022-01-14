@@ -78,7 +78,7 @@ func TestDBPing(t *testing.T) {
 
 }
 
-func TestDBJSONAPI(t *testing.T) {
+func TestDBJSONAPIConflict(t *testing.T) {
 	cfgApp := config(t)
 	//_ = os.Remove(cfgApp.FileStoragePath)
 
@@ -98,8 +98,8 @@ func TestDBJSONAPI(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Parse shortURL
-	shortURL := testDecodeJSONShortURL(t, shortURLInJSON)
-	_, err = url.Parse(shortURL)
+	shortURL1 := testDecodeJSONShortURL(t, shortURLInJSON)
+	_, err = url.Parse(shortURL1)
 	require.NoError(t, err)
 
 	// Create ID2
@@ -111,9 +111,12 @@ func TestDBJSONAPI(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, resp.StatusCode)
 
 	// Parse shortURL
-	shortURL = testDecodeJSONShortURL(t, shortURLInJSON)
-	u, err := url.Parse(shortURL)
+	shortURL2 := testDecodeJSONShortURL(t, shortURLInJSON)
+	u, err := url.Parse(shortURL2)
 	require.NoError(t, err)
+
+	// check Short URLs are equal
+	require.Equal(t, shortURL1, shortURL2)
 
 	// Check redirection by existing ID
 	resp, _ = testRequest(t, ts.URL+u.Path, "GET", nil)

@@ -1,6 +1,6 @@
 package app
 
-/*
+///*
 import (
 	"bytes"
 	"context"
@@ -43,8 +43,6 @@ func TestDBBatch(t *testing.T) {
 	batch[2] = batchInputItem{CorrelationID: "2", OriginalURL: "https://yandex.ru/cccc"}
 	jsonBatch, err := json.Marshal(batch)
 	require.NoError(t, err)
-
-
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/shorten/batch", bytes.NewBuffer(jsonBatch))

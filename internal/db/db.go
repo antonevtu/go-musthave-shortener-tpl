@@ -56,11 +56,26 @@ func (d *T) New(ctx context.Context, url string) error {
 func (d *T) Shorten(ctx context.Context, e Entity) (conflict bool, shortPath string, err error) {
 	sql := "insert into urls values (default, $1, $2, $3)"
 	_, err = Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
+
 	if err == nil {
-		return false, shortPath, err
+		return false, shortPath, nil
 	}
 
-	// TODO: разобраться как отловить ошибку конфликта записей
+	// TODO: не работает приведение к *pq.Error
+	//errPG, ok := err.(*pq.Error)
+	//if ok {
+	//	if errPG.Code == pgerrcode.UniqueViolation {
+	//		// Запрос short_path по существующему long_url
+	//		row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
+	//		err = row.Scan(&shortPath)
+	//		if err != nil {
+	//			return false, shortPath, err
+	//		}
+	//		return true, shortPath, nil
+	//	}
+	//}
+	//return false, shortPath, err
+
 	// Запрос short_path по существующему long_url
 	row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
 	err = row.Scan(&shortPath)

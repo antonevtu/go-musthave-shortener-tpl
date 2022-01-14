@@ -32,6 +32,13 @@ func (d *T) New(ctx context.Context, url string) error {
 		return err
 	}
 
+	// удаление таблицы
+	sql := "drop table if exists urls"
+	_, err = d.Exec(context.Background(), sql)
+	if err != nil {
+		return err
+	}
+
 	// создание таблицы
 	sql1 := "create table if not exists urls (" +
 		"id serial primary key, " +
@@ -40,7 +47,7 @@ func (d *T) New(ctx context.Context, url string) error {
 		"long_url varchar(1024) not null unique)"
 	_, err = d.Exec(context.Background(), sql1)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return err

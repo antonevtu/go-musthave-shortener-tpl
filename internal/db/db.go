@@ -15,9 +15,9 @@ type T struct {
 }
 
 type Entity struct {
-	UserID string `json:"user_id"`
-	ID     string `json:"id"`
-	URL    string `json:"url"`
+	UserID  string `json:"user_id"`
+	ShortID string `json:"id"`
+	LongURL string `json:"url"`
 }
 
 type BatchInput []BatchInputItem
@@ -41,7 +41,7 @@ func New(ctx context.Context, url string) (T, error) {
 	sql1 := "create table if not exists urls (" +
 		"id serial primary key, " +
 		"user_id varchar(512) not null, " +
-		"short_path varchar(512) not null, " +
+		"short_id varchar(512) not null, " +
 		"long_url varchar(1024) not null unique)"
 	_, err = pool.Exec(ctx, sql1)
 	if err != nil {
@@ -53,7 +53,7 @@ func New(ctx context.Context, url string) (T, error) {
 
 func (d *T) AddEntity(ctx context.Context, e Entity) error {
 	sql := "insert into urls values (default, $1, $2, $3)"
-	_, err := d.Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
+	_, err := d.Pool.Exec(ctx, sql, e.UserID, e.ShortID, e.LongURL)
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
@@ -65,14 +65,14 @@ func (d *T) AddEntity(ctx context.Context, e Entity) error {
 }
 
 func (d *T) SelectByLongURL(ctx context.Context, longURL string) (string, error) {
-	row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", longURL)
+	row := d.Pool.QueryRow(ctx, "select short_id from urls where long_url = $1", longURL)
 	var shortPath string
 	err := row.Scan(&shortPath)
 	return shortPath, err
 }
 
-func (d *T) SelectByIDURL(ctx context.Context, id string) (string, error) {
-	rows, err := d.Pool.Query(ctx, "select long_url from urls where short_path = $1", id)
+func (d *T) SelectByShortID(ctx context.Context, id string) (string, error) {
+	rows, err := d.Pool.Query(ctx, "select long_url from urls where short_id = $1", id)
 	if err != nil {
 		return "", err
 	}
@@ -95,7 +95,7 @@ func (d *T) SelectByUser(ctx context.Context, userID string) ([]Entity, error) {
 	var rowID int
 	eArray := make([]Entity, 0, 10)
 	for rows.Next() {
-		err = rows.Scan(&rowID, &e.UserID, &e.ID, &e.URL)
+		err = rows.Scan(&rowID, &e.UserID, &e.ShortID, &e.LongURL)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +110,7 @@ func (d *T) Flush(ctx context.Context, userID string, data BatchInput) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(ctx, "batch", "insert into urls(user_id, short_path, long_url) VALUES($1, $2, $3)")
+	stmt, err := tx.Prepare(ctx, "batch", "insert into urls(user_id, short_id, long_url) VALUES($1, $2, $3)")
 	if err != nil {
 		return err
 	}

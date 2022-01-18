@@ -15,7 +15,7 @@ import (
 type Repositorier interface {
 	AddEntity(ctx context.Context, entity db.Entity) error
 	SelectByLongURL(ctx context.Context, longURL string) (string, error)
-	SelectByIDURL(ctx context.Context, shortURL string) (string, error)
+	SelectByShortID(ctx context.Context, shortURL string) (string, error)
 	SelectByUser(ctx context.Context, userID string) ([]db.Entity, error)
 	Flush(ctx context.Context, userID string, input db.BatchInput) error
 	Ping(ctx context.Context) error
@@ -66,7 +66,7 @@ func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFun
 		var statusCode = http.StatusCreated
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL.URL})
+		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: id, LongURL: longURL.URL})
 		if errors.Is(err, db.ErrUniqueViolation) {
 			id, err = repo.SelectByLongURL(ctx, longURL.URL)
 			statusCode = http.StatusConflict
@@ -116,7 +116,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		var statusCode = http.StatusCreated
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL})
+		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: id, LongURL: longURL})
 		if errors.Is(err, db.ErrUniqueViolation) {
 			id, err = repo.SelectByLongURL(ctx, longURL)
 			statusCode = http.StatusConflict
@@ -144,7 +144,7 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		longURL, err := repo.SelectByIDURL(ctx, id)
+		longURL, err := repo.SelectByShortID(ctx, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -177,8 +177,8 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 			history := make(responseUserHistory, len(selection))
 			for i, v := range selection {
 				history[i] = item{
-					ShortURL:    baseURL + "/" + v.ID,
-					OriginalURL: v.URL,
+					ShortURL:    baseURL + "/" + v.ShortID,
+					OriginalURL: v.LongURL,
 				}
 			}
 			js, err := json.Marshal(history)

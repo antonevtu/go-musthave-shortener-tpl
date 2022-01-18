@@ -69,14 +69,14 @@ func (r *Repository) restoreFromFile(fileName string) error {
 		} else if err != nil {
 			return err
 		}
-		r.storage[entity.ID] = entity
+		r.storage[entity.ShortID] = entity
 	}
 }
 
 func (r *Repository) AddEntity(_ context.Context, entity db.Entity) error {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
-	r.storage[entity.ID] = entity
+	r.storage[entity.ShortID] = entity
 	err := r.fileWriter.encoder.Encode(&entity)
 	return err
 }
@@ -85,12 +85,12 @@ func (r *Repository) SelectByLongURL(_ context.Context, id string) (string, erro
 	return "", errors.New("method not supported")
 }
 
-func (r *Repository) SelectByIDURL(_ context.Context, id string) (string, error) {
+func (r *Repository) SelectByShortID(_ context.Context, id string) (string, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	entity, ok := r.storage[id]
 	if ok {
-		return entity.URL, nil
+		return entity.LongURL, nil
 	} else {
 		return "", errors.New("a non-existent ID was requested")
 	}

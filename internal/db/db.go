@@ -70,14 +70,6 @@ func (d *T) Shorten(ctx context.Context, e Entity) (conflict bool, shortPath str
 		}
 	}
 	return false, shortPath, err
-
-	// Запрос short_path по существующему long_url
-	//row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
-	//err = row.Scan(&shortPath)
-	//if err != nil {
-	//	return false, shortPath, err
-	//}
-	return true, shortPath, nil
 }
 
 func (d *T) Expand(ctx context.Context, id string) (string, error) {

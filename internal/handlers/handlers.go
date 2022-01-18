@@ -63,7 +63,7 @@ func handlerShortenURLJSONAPI(repo Repositorier, cfgApp cfg.Config) http.Handler
 
 		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
 		var statusCode = http.StatusCreated
-		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfgApp.CtxTimeout)*time.Second)
 		defer cancel()
 		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: shortID, LongURL: longURL.URL})
 		if errors.Is(err, db.ErrUniqueViolation) {
@@ -113,7 +113,7 @@ func handlerShortenURL(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 
 		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
 		var statusCode = http.StatusCreated
-		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfgApp.CtxTimeout)*time.Second)
 		defer cancel()
 		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: shortID, LongURL: longURL})
 		if errors.Is(err, db.ErrUniqueViolation) {
@@ -141,7 +141,7 @@ func handlerShortenURL(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 func handlerExpandURL(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfgApp.CtxTimeout)*time.Second)
 		defer cancel()
 		longURL, err := repo.SelectByShortID(ctx, id)
 		if err != nil {
@@ -161,7 +161,7 @@ func handlerUserHistory(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfgApp.CtxTimeout)*time.Second)
 		defer cancel()
 		selection, err := repo.SelectByUser(ctx, userID.String())
 		if err != nil {
@@ -241,7 +241,7 @@ func handlerShortenURLAPIBatch(repo Repositorier, cfgApp cfg.Config) http.Handle
 			input[i].ShortID = uuid.NewString()
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(cfgApp.CtxTimeout)*time.Second)
 		defer cancel()
 		err = repo.Flush(ctx, userID.String(), input)
 		if err != nil {

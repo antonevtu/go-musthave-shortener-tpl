@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"testing"
-	"time"
 )
 
 var (
@@ -25,7 +24,7 @@ var (
 	BaseURL         *string
 	FileStoragePath *string
 	DatabaseDSN     *string
-	CtxTimeout      *time.Duration
+	CtxTimeout      *int64
 )
 
 func init() {
@@ -33,7 +32,7 @@ func init() {
 	BaseURL = flag.String("b", "http://localhost:8080", "base url for expand")
 	FileStoragePath = flag.String("f", "./storage.txt", "path to storage file")
 	DatabaseDSN = flag.String("d", "", "postgres url")
-	CtxTimeout = (*time.Duration)(flag.Int64("t", 500, "context timeout"))
+	CtxTimeout = flag.Int64("t", 500, "context timeout")
 }
 
 func TestGZipJSONAPI(t *testing.T) {

@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewRouter(repo Repositorier, baseURL string) chi.Router {
+func NewRouter(repo Repositorier, cfgApp cfg.Config) chi.Router {
 	// Определяем роутер chi
 	r := chi.NewRouter()
 
@@ -21,12 +22,12 @@ func NewRouter(repo Repositorier, baseURL string) chi.Router {
 
 	// создадим суброутер
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlerShortenURL(repo, baseURL))
-		r.Post("/api/shorten", handlerShortenURLJSONAPI(repo, baseURL))
-		r.Get("/{id}", handlerExpandURL(repo))
-		r.Get("/user/urls", handlerUserHistory(repo, baseURL))
+		r.Post("/", handlerShortenURL(repo, cfgApp))
+		r.Post("/api/shorten", handlerShortenURLJSONAPI(repo, cfgApp))
+		r.Get("/{id}", handlerExpandURL(repo, cfgApp))
+		r.Get("/user/urls", handlerUserHistory(repo, cfgApp))
 		r.Get("/ping", handlerPingDB(repo))
-		r.Post("/api/shorten/batch", handlerShortenURLAPIBatch(repo, baseURL))
+		r.Post("/api/shorten/batch", handlerShortenURLAPIBatch(repo, cfgApp))
 	})
 	return r
 }

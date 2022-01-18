@@ -39,7 +39,7 @@ func Run() {
 	defer repo.Close()
 
 	//r := handlers.NewRouter(repo, cfgApp)
-	r := handlers.NewRouter(&dbPool, cfgApp.BaseURL)
+	r := handlers.NewRouter(&dbPool, cfgApp)
 	httpServer := &http.Server{
 		Addr:        cfgApp.ServerAddress,
 		Handler:     r,

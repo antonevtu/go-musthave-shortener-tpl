@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/google/uuid"
@@ -29,9 +30,17 @@ type batchOutputItem struct {
 }
 
 func TestDBBatch(t *testing.T) {
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
+
 	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
-	r := handlers.NewRouter(&dbPool, *BaseURL)
+	r := handlers.NewRouter(&dbPool, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -57,9 +66,17 @@ func TestDBBatch(t *testing.T) {
 
 ///*
 func TestDBPing(t *testing.T) {
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
+
 	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
-	r := handlers.NewRouter(&dbPool, *BaseURL)
+	r := handlers.NewRouter(&dbPool, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -74,10 +91,18 @@ func TestDBPing(t *testing.T) {
 }
 
 func TestDBJSONAPIConflict(t *testing.T) {
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
+
 	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(&dbPool, "http://localhost:8080")
+	r := handlers.NewRouter(&dbPool, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -128,10 +153,18 @@ func TestDBJSONAPIConflict(t *testing.T) {
 }
 
 func TestDBCookie(t *testing.T) {
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
+
 	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(&dbPool, *BaseURL)
+	r := handlers.NewRouter(&dbPool, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

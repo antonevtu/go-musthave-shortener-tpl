@@ -2,14 +2,18 @@ package cfg
 
 import (
 	"flag"
+	"fmt"
 	"github.com/caarlos0/env/v6"
+	"strconv"
+	"time"
 )
 
 type Config struct {
-	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
-	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"./storage.txt"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
+	ServerAddress   string        `env:"SERVER_ADDRESS" envDefault:":8080"`
+	BaseURL         string        `env:"BASE_URL" envDefault:"http://localhost:8080"`
+	FileStoragePath string        `env:"FILE_STORAGE_PATH" envDefault:"./storage.txt"`
+	DatabaseDSN     string        `env:"DATABASE_DSN"`
+	CtxTimeout      time.Duration `env:"CTXTIMEOUT" envDefault:"5"`
 }
 
 func New() (Config, error) {
@@ -36,6 +40,14 @@ func New() (Config, error) {
 	})
 	flag.Func("d", "postgres url", func(flagValue string) error {
 		cfg.DatabaseDSN = flagValue
+		return nil
+	})
+	flag.Func("t", "context timeout", func(flagValue string) error {
+		t, err := strconv.Atoi(flagValue)
+		if err != nil {
+			return fmt.Errorf("can't parse context timeout -t: %w", err)
+		}
+		cfg.CtxTimeout = time.Duration(t)
 		return nil
 	})
 

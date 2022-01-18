@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -33,9 +34,7 @@ type item struct {
 	OriginalURL string `json:"original_url"`
 }
 
-const timeout = 600
-
-func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFunc {
+func handlerShortenURLJSONAPI(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getUserID(r)
 		if err != nil {
@@ -60,15 +59,15 @@ func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFun
 			return
 		}
 
-		id := uuid.NewString() // ID короткого URL
+		shortID := uuid.NewString() // ID короткого URL
 
 		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
 		var statusCode = http.StatusCreated
-		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
 		defer cancel()
-		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: id, LongURL: longURL.URL})
+		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: shortID, LongURL: longURL.URL})
 		if errors.Is(err, db.ErrUniqueViolation) {
-			id, err = repo.SelectByLongURL(ctx, longURL.URL)
+			shortID, err = repo.SelectByLongURL(ctx, longURL.URL)
 			statusCode = http.StatusConflict
 		}
 		if err != nil {
@@ -77,7 +76,7 @@ func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFun
 		}
 
 		// Ответ на запрос
-		response := responseURL{Result: baseURL + "/" + id}
+		response := responseURL{Result: cfgApp.BaseURL + "/" + shortID}
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -95,7 +94,7 @@ func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFun
 	}
 }
 
-func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
+func handlerShortenURL(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getUserID(r)
 		if err != nil {
@@ -110,15 +109,15 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		}
 		longURL := string(body)
 
-		id := uuid.NewString()
+		shortID := uuid.NewString()
 
 		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
 		var statusCode = http.StatusCreated
-		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
 		defer cancel()
-		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: id, LongURL: longURL})
+		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ShortID: shortID, LongURL: longURL})
 		if errors.Is(err, db.ErrUniqueViolation) {
-			id, err = repo.SelectByLongURL(ctx, longURL)
+			shortID, err = repo.SelectByLongURL(ctx, longURL)
 			statusCode = http.StatusConflict
 		}
 		if err != nil {
@@ -126,7 +125,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		shortURL := baseURL + "/" + id
+		shortURL := cfgApp.BaseURL + "/" + shortID
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		setCookie(w, userID)
@@ -139,10 +138,10 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 	}
 }
 
-func handlerExpandURL(repo Repositorier) http.HandlerFunc {
+func handlerExpandURL(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
 		defer cancel()
 		longURL, err := repo.SelectByShortID(ctx, id)
 		if err != nil {
@@ -154,7 +153,7 @@ func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 	}
 }
 
-func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
+func handlerUserHistory(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getUserID(r)
 		if err != nil {
@@ -162,7 +161,7 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
 		defer cancel()
 		selection, err := repo.SelectByUser(ctx, userID.String())
 		if err != nil {
@@ -177,7 +176,7 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 			history := make(responseUserHistory, len(selection))
 			for i, v := range selection {
 				history[i] = item{
-					ShortURL:    baseURL + "/" + v.ShortID,
+					ShortURL:    cfgApp.BaseURL + "/" + v.ShortID,
 					OriginalURL: v.LongURL,
 				}
 			}
@@ -216,7 +215,7 @@ type batchOutputItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
-func handlerShortenURLAPIBatch(repo Repositorier, baseURL string) http.HandlerFunc {
+func handlerShortenURLAPIBatch(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getUserID(r)
 		if err != nil {
@@ -239,10 +238,10 @@ func handlerShortenURLAPIBatch(repo Repositorier, baseURL string) http.HandlerFu
 
 		// generate ID's for short URL's
 		for i := range input {
-			input[i].ShortPath = uuid.NewString()
+			input[i].ShortId = uuid.NewString()
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
 		defer cancel()
 		err = repo.Flush(ctx, userID.String(), input)
 		if err != nil {
@@ -252,7 +251,7 @@ func handlerShortenURLAPIBatch(repo Repositorier, baseURL string) http.HandlerFu
 
 		output := make(batchOutput, len(input))
 		for i := range input {
-			output[i].ShortURL = baseURL + "/" + input[i].ShortPath
+			output[i].ShortURL = cfgApp.BaseURL + "/" + input[i].ShortId
 			output[i].CorrelationID = input[i].CorrelationID
 		}
 

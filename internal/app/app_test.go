@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"flag"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 )
 
 var (
@@ -23,6 +25,7 @@ var (
 	BaseURL         *string
 	FileStoragePath *string
 	DatabaseDSN     *string
+	CtxTimeout      *time.Duration
 )
 
 func init() {
@@ -30,14 +33,23 @@ func init() {
 	BaseURL = flag.String("b", "http://localhost:8080", "base url for expand")
 	FileStoragePath = flag.String("f", "./storage.txt", "path to storage file")
 	DatabaseDSN = flag.String("d", "", "postgres url")
+	CtxTimeout = (*time.Duration)(flag.Int64("t", 500, "context timeout"))
 }
 
 func TestGZipJSONAPI(t *testing.T) {
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
+
 	_ = os.Remove(*FileStoragePath)
 	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(repo, *BaseURL)
+	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -61,11 +73,18 @@ func TestGZipJSONAPI(t *testing.T) {
 
 func TestJSONAPI(t *testing.T) {
 	//_ = os.Remove(cfgApp.FileStoragePath)
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
 
 	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(repo, *BaseURL)
+	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -122,9 +141,17 @@ func TestJSONAPI(t *testing.T) {
 
 func TestTextAPI(t *testing.T) {
 	//_ = os.Remove(cfgApp.FileStoragePath)
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
+
 	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
-	r := handlers.NewRouter(repo, *BaseURL)
+	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

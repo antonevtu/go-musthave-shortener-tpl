@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"compress/gzip"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -17,10 +18,18 @@ import (
 
 func TestCookie(t *testing.T) {
 	//_ = os.Remove(cfgApp.FileStoragePath)
+	cfgApp := cfg.Config{
+		ServerAddress:   *ServerAddress,
+		BaseURL:         *BaseURL,
+		FileStoragePath: *FileStoragePath,
+		DatabaseDSN:     *DatabaseDSN,
+		CtxTimeout:      *CtxTimeout,
+	}
+
 	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(repo, *BaseURL)
+	r := handlers.NewRouter(repo, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

@@ -56,8 +56,8 @@ func setCookie(w http.ResponseWriter, userID uuid.UUID) {
 	http.SetCookie(w, &cuca)
 }
 
-func encodeToken(key []byte, id_ uuid.UUID) string {
-	id := id_[:]
+func encodeToken(key []byte, id16 uuid.UUID) string {
+	id := id16[:]
 	h := hmac.New(sha256.New, key)
 	h.Write(id)
 	dst := h.Sum(nil)

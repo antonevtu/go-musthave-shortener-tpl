@@ -2,7 +2,11 @@ package db
 
 import (
 	"context"
+	"errors"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/lib/pq"
 	"log"
 )
 
@@ -23,20 +27,12 @@ type BatchInputItem struct {
 	ShortPath     string `json:"-"`
 }
 
-var Pool T
-
-func (d *T) New(ctx context.Context, url string) error {
+func New(ctx context.Context, url string) (T, error) {
+	var pool T
 	var err error
-	d.Pool, err = pgxpool.Connect(ctx, url)
+	pool.Pool, err = pgxpool.Connect(ctx, url)
 	if err != nil {
-		return err
-	}
-
-	// удаление таблицы
-	sql := "drop table if exists urls"
-	_, err = d.Exec(context.Background(), sql)
-	if err != nil {
-		return err
+		return pool, err
 	}
 
 	// создание таблицы
@@ -45,43 +41,42 @@ func (d *T) New(ctx context.Context, url string) error {
 		"user_id varchar(512) not null, " +
 		"short_path varchar(512) not null, " +
 		"long_url varchar(1024) not null unique)"
-	_, err = d.Exec(context.Background(), sql1)
+	_, err = pool.Exec(ctx, sql1)
 	if err != nil {
-		return err
+		return pool, err
 	}
 
-	return err
+	return pool, nil
 }
 
 func (d *T) Shorten(ctx context.Context, e Entity) (conflict bool, shortPath string, err error) {
 	sql := "insert into urls values (default, $1, $2, $3)"
-	_, err = Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
+	_, err = d.Pool.Exec(ctx, sql, e.UserID, e.ID, e.URL)
 
 	if err == nil {
 		return false, shortPath, nil
 	}
 
-	// TODO: не работает приведение к *pq.Error
-	//errPG, ok := err.(*pq.Error)
-	//if ok {
-	//	if errPG.Code == pgerrcode.UniqueViolation {
-	//		// Запрос short_path по существующему long_url
-	//		row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
-	//		err = row.Scan(&shortPath)
-	//		if err != nil {
-	//			return false, shortPath, err
-	//		}
-	//		return true, shortPath, nil
-	//	}
-	//}
-	//return false, shortPath, err
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == pgerrcode.UniqueViolation {
+			// Запрос short_path по существующему long_url
+			row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
+			err = row.Scan(&shortPath)
+			if err != nil {
+				return false, shortPath, err
+			}
+			return true, shortPath, nil
+		}
+	}
+	return false, shortPath, err
 
 	// Запрос short_path по существующему long_url
-	row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
-	err = row.Scan(&shortPath)
-	if err != nil {
-		return false, shortPath, err
-	}
+	//row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
+	//err = row.Scan(&shortPath)
+	//if err != nil {
+	//	return false, shortPath, err
+	//}
 	return true, shortPath, nil
 }
 

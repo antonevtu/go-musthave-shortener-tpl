@@ -1,6 +1,6 @@
 package app
 
-/*
+///*
 import (
 	"bytes"
 	"context"
@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"testing"
 )
 
@@ -30,10 +29,9 @@ type batchOutputItem struct {
 }
 
 func TestDBBatch(t *testing.T) {
-	var cfgApp = config(t)
-	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)
+	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
-	r := handlers.NewRouter(&db.Pool, cfgApp)
+	r := handlers.NewRouter(&dbPool, *BaseURL)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -59,10 +57,9 @@ func TestDBBatch(t *testing.T) {
 
 ///*
 func TestDBPing(t *testing.T) {
-	var cfgApp = config(t)
-	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)
+	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
-	r := handlers.NewRouter(&db.Pool, cfgApp)
+	r := handlers.NewRouter(&dbPool, *BaseURL)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -77,13 +74,12 @@ func TestDBPing(t *testing.T) {
 }
 
 func TestDBJSONAPIConflict(t *testing.T) {
-	cfgApp := config(t)
 	//_ = os.Remove(cfgApp.FileStoragePath)
 
-	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)
+	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(&db.Pool, cfgApp)
+	r := handlers.NewRouter(&dbPool, "http://localhost:8080")
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -131,23 +127,14 @@ func TestDBJSONAPIConflict(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-	// Check server returns correct baseURL
-	baseURL := u.Scheme + "://" + u.Host
-	assert.Equal(t, baseURL, cfgApp.BaseURL)
-
-	// Check storage file created
-	file, err := os.Open(cfgApp.FileStoragePath)
-	assert.Equal(t, err, nil)
-	defer file.Close()
 }
 
 func TestDBCookie(t *testing.T) {
-	cfgApp := config(t)
 	//_ = os.Remove(cfgApp.FileStoragePath)
-	err := db.Pool.New(context.Background(), cfgApp.DatabaseDSN)
+	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(&db.Pool, cfgApp)
+	r := handlers.NewRouter(&dbPool, *BaseURL)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

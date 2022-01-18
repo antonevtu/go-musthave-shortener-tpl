@@ -16,7 +16,7 @@ import (
 )
 
 func Run() {
-	cfgApp, err := cfg.New()
+	var cfgApp, err = cfg.New()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -25,11 +25,11 @@ func Run() {
 	defer cancel()
 
 	// database
-	err = db.Pool.New(ctx, cfgApp.DatabaseDSN)
+	dbPool, err := db.New(ctx, cfgApp.DatabaseDSN)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Pool.Close()
+	defer dbPool.Close()
 
 	// repository
 	repo, err := repository.New(cfgApp.FileStoragePath)
@@ -39,7 +39,7 @@ func Run() {
 	defer repo.Close()
 
 	//r := handlers.NewRouter(repo, cfgApp)
-	r := handlers.NewRouter(&db.Pool, cfgApp)
+	r := handlers.NewRouter(&dbPool, cfgApp.BaseURL)
 	httpServer := &http.Server{
 		Addr:        cfgApp.ServerAddress,
 		Handler:     r,

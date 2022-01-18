@@ -16,12 +16,11 @@ import (
 )
 
 func TestCookie(t *testing.T) {
-	cfgApp := config(t)
 	//_ = os.Remove(cfgApp.FileStoragePath)
-	repo, err := repository.New(cfgApp.FileStoragePath)
+	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(repo, cfgApp)
+	r := handlers.NewRouter(repo, *BaseURL)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

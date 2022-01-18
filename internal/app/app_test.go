@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
+	"flag"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
-	"github.com/caarlos0/env/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -19,13 +18,27 @@ import (
 	"testing"
 )
 
+var (
+	ServerAddress   *string
+	BaseURL         *string
+	FileStoragePath *string
+	DatabaseDSN     *string
+)
+
+func init() {
+	ServerAddress = flag.String("a", ":8080", "server address for shorten")
+	BaseURL = flag.String("b", "http://localhost:8080", "base url for expand")
+	FileStoragePath = flag.String("f", "./storage.txt", "path to storage file")
+	DatabaseDSN = flag.String("d", "", "postgres url")
+}
+
 func TestGZipJSONAPI(t *testing.T) {
-	cfgApp := config(t)
-	_ = os.Remove(cfgApp.FileStoragePath)
-	repo, err := repository.New(cfgApp.FileStoragePath)
+	//cfgApp := config(t)
+	_ = os.Remove(*FileStoragePath)
+	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(repo, cfgApp)
+	r := handlers.NewRouter(repo, *BaseURL)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -48,13 +61,12 @@ func TestGZipJSONAPI(t *testing.T) {
 }
 
 func TestJSONAPI(t *testing.T) {
-	cfgApp := config(t)
 	//_ = os.Remove(cfgApp.FileStoragePath)
 
-	repo, err := repository.New(cfgApp.FileStoragePath)
+	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
 
-	r := handlers.NewRouter(repo, cfgApp)
+	r := handlers.NewRouter(repo, *BaseURL)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -101,20 +113,19 @@ func TestJSONAPI(t *testing.T) {
 
 	// Check server returns correct baseURL
 	baseURL := u.Scheme + "://" + u.Host
-	assert.Equal(t, baseURL, cfgApp.BaseURL)
+	assert.Equal(t, baseURL, *BaseURL)
 
 	// Check storage file created
-	file, err := os.Open(cfgApp.FileStoragePath)
+	file, err := os.Open(*FileStoragePath)
 	assert.Equal(t, err, nil)
 	defer file.Close()
 }
 
 func TestTextAPI(t *testing.T) {
-	var cfgApp = config(t)
 	//_ = os.Remove(cfgApp.FileStoragePath)
-	repo, err := repository.New(cfgApp.FileStoragePath)
+	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
-	r := handlers.NewRouter(repo, cfgApp)
+	r := handlers.NewRouter(repo, *BaseURL)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -151,7 +162,7 @@ func TestTextAPI(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 
 	// Check storage file created
-	file, err := os.Open(cfgApp.FileStoragePath)
+	file, err := os.Open(*FileStoragePath)
 	assert.Equal(t, err, nil)
 	defer file.Close()
 }
@@ -230,27 +241,27 @@ func testDecodeJSONShortURL(t *testing.T, js string) string {
 	return url_.Result
 }
 
-func config(t *testing.T) cfg.Config {
-	var cfgApp cfg.Config
-
-	// Заполнение cfg значениями из переменных окружения, в том числе дефолтными значениями
-	err := env.Parse(&cfgApp)
-	assert.Equal(t, err, nil)
-
-	//// Если заданы аргументы командной строки - перетираем значения переменных окружения
-	//flag.Func("a", "server address for shorten", func(flagValue string) error {
-	//	cfgApp.ServerAddress = flagValue
-	//	return nil
-	//})
-	//flag.Func("b", "base url for expand", func(flagValue string) error {
-	//	cfgApp.BaseURL = flagValue
-	//	return nil
-	//})
-	//flag.Func("f", "path to storage file", func(flagValue string) error {
-	//	cfgApp.FileStoragePath = flagValue
-	//	return nil
-	//})
-
-	//flag.Parse()
-	return cfgApp
-}
+//func config(t *testing.T) cfg.Config {
+//	var cfgApp cfg.Config
+//
+//	// Заполнение cfg значениями из переменных окружения, в том числе дефолтными значениями
+//	err := env.Parse(&cfgApp)
+//	assert.Equal(t, err, nil)
+//
+//	//// Если заданы аргументы командной строки - перетираем значения переменных окружения
+//	//flag.Func("a", "server address for shorten", func(flagValue string) error {
+//	//	cfgApp.ServerAddress = flagValue
+//	//	return nil
+//	//})
+//	//flag.Func("b", "base url for expand", func(flagValue string) error {
+//	//	cfgApp.BaseURL = flagValue
+//	//	return nil
+//	//})
+//	//flag.Func("f", "path to storage file", func(flagValue string) error {
+//	//	cfgApp.FileStoragePath = flagValue
+//	//	return nil
+//	//})
+//
+//	//flag.Parse()
+//	return cfgApp
+//}

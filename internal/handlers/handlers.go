@@ -16,6 +16,7 @@ type Repositorier interface {
 	Expand(ctx context.Context, shortURL string) (string, error)
 	SelectByUser(ctx context.Context, userID string) ([]db.Entity, error)
 	Flush(ctx context.Context, userID string, input db.BatchInput) error
+	Ping(ctx context.Context) error
 }
 
 type requestURL struct {
@@ -213,9 +214,9 @@ func handlerUserHistory(repo Repositorier, baseURL string) http.HandlerFunc {
 	}
 }
 
-func handlerPingDB() http.HandlerFunc {
+func handlerPingDB(repo Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := db.Pool.Ping(context.Background())
+		err := repo.Ping(context.Background())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {

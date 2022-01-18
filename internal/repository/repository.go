@@ -73,15 +73,19 @@ func (r *Repository) restoreFromFile(fileName string) error {
 	}
 }
 
-func (r *Repository) Shorten(_ context.Context, entity db.Entity) (_ bool, _ string, err error) {
+func (r *Repository) AddEntity(_ context.Context, entity db.Entity) error {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	r.storage[entity.ID] = entity
-	err = r.fileWriter.encoder.Encode(&entity)
-	return false, "", err
+	err := r.fileWriter.encoder.Encode(&entity)
+	return err
 }
 
-func (r *Repository) Expand(_ context.Context, id string) (string, error) {
+func (r *Repository) SelectByLongURL(_ context.Context, id string) (string, error) {
+	return "", errors.New("method not supported")
+}
+
+func (r *Repository) SelectByIDURL(_ context.Context, id string) (string, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	entity, ok := r.storage[id]

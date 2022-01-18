@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -12,8 +13,9 @@ import (
 )
 
 type Repositorier interface {
-	Shorten(ctx context.Context, entity db.Entity) (conflict bool, shortPath string, err error)
-	Expand(ctx context.Context, shortURL string) (string, error)
+	AddEntity(ctx context.Context, entity db.Entity) error
+	SelectByLongURL(ctx context.Context, longURL string) (string, error)
+	SelectByIDURL(ctx context.Context, shortURL string) (string, error)
 	SelectByUser(ctx context.Context, userID string) ([]db.Entity, error)
 	Flush(ctx context.Context, userID string, input db.BatchInput) error
 	Ping(ctx context.Context) error
@@ -61,22 +63,17 @@ func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFun
 		id := uuid.NewString() // ID короткого URL
 
 		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
+		var statusCode = http.StatusCreated
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		var conflict bool
-		var idExisting string
-		conflict, idExisting, err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL.URL})
+		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL.URL})
+		if errors.Is(err, db.UniqueViolationError) {
+			id, err = repo.SelectByLongURL(ctx, longURL.URL)
+			statusCode = http.StatusConflict
+		}
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-
-		var statusCode int
-		if conflict {
-			id = idExisting
-			statusCode = http.StatusConflict
-		} else {
-			statusCode = http.StatusCreated
 		}
 
 		// Ответ на запрос
@@ -116,22 +113,17 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		id := uuid.NewString()
 
 		// запрос в БД на сохранение URL. Замена id на существующий в случае дублирования longURL
+		var statusCode = http.StatusCreated
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		var conflict bool
-		var idExisting string
-		conflict, idExisting, err = repo.Shorten(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL})
+		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL})
+		if errors.Is(err, db.UniqueViolationError) {
+			id, err = repo.SelectByLongURL(ctx, longURL)
+			statusCode = http.StatusConflict
+		}
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-
-		var statusCode int
-		if conflict {
-			id = idExisting
-			statusCode = http.StatusConflict
-		} else {
-			statusCode = http.StatusCreated
 		}
 
 		shortURL := baseURL + "/" + id
@@ -149,17 +141,10 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 
 func handlerExpandURL(repo Repositorier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//userID, err := getUserID(r)
-		//if err != nil {
-		//	http.Error(w, err.Error(), http.StatusInternalServerError)
-		//	return
-		//}
-		//setCookie(w, userID)
-
 		id := chi.URLParam(r, "id")
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
-		longURL, err := repo.Expand(ctx, id)
+		longURL, err := repo.SelectByIDURL(ctx, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

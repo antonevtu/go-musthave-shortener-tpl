@@ -1,6 +1,6 @@
 package app
 
-/*
+///*
 import (
 	"bytes"
 	"context"
@@ -74,8 +74,6 @@ func TestDBPing(t *testing.T) {
 }
 
 func TestDBJSONAPIConflict(t *testing.T) {
-	//_ = os.Remove(cfgApp.FileStoragePath)
-
 	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
 
@@ -130,7 +128,6 @@ func TestDBJSONAPIConflict(t *testing.T) {
 }
 
 func TestDBCookie(t *testing.T) {
-	//_ = os.Remove(cfgApp.FileStoragePath)
 	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
 

@@ -33,7 +33,6 @@ func init() {
 }
 
 func TestGZipJSONAPI(t *testing.T) {
-	//cfgApp := config(t)
 	_ = os.Remove(*FileStoragePath)
 	repo, err := repository.New(*FileStoragePath)
 	assert.Equal(t, err, nil)
@@ -240,28 +239,3 @@ func testDecodeJSONShortURL(t *testing.T, js string) string {
 	require.NoError(t, err)
 	return url_.Result
 }
-
-//func config(t *testing.T) cfg.Config {
-//	var cfgApp cfg.Config
-//
-//	// Заполнение cfg значениями из переменных окружения, в том числе дефолтными значениями
-//	err := env.Parse(&cfgApp)
-//	assert.Equal(t, err, nil)
-//
-//	//// Если заданы аргументы командной строки - перетираем значения переменных окружения
-//	//flag.Func("a", "server address for shorten", func(flagValue string) error {
-//	//	cfgApp.ServerAddress = flagValue
-//	//	return nil
-//	//})
-//	//flag.Func("b", "base url for expand", func(flagValue string) error {
-//	//	cfgApp.BaseURL = flagValue
-//	//	return nil
-//	//})
-//	//flag.Func("f", "path to storage file", func(flagValue string) error {
-//	//	cfgApp.FileStoragePath = flagValue
-//	//	return nil
-//	//})
-//
-//	//flag.Parse()
-//	return cfgApp
-//}

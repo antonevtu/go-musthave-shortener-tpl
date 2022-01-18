@@ -238,7 +238,7 @@ func handlerShortenURLAPIBatch(repo Repositorier, cfgApp cfg.Config) http.Handle
 
 		// generate ID's for short URL's
 		for i := range input {
-			input[i].ShortId = uuid.NewString()
+			input[i].ShortID = uuid.NewString()
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), cfgApp.CtxTimeout*time.Second)
@@ -251,7 +251,7 @@ func handlerShortenURLAPIBatch(repo Repositorier, cfgApp cfg.Config) http.Handle
 
 		output := make(batchOutput, len(input))
 		for i := range input {
-			output[i].ShortURL = cfgApp.BaseURL + "/" + input[i].ShortId
+			output[i].ShortURL = cfgApp.BaseURL + "/" + input[i].ShortID
 			output[i].CorrelationID = input[i].CorrelationID
 		}
 

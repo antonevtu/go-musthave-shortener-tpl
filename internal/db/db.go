@@ -24,7 +24,7 @@ type BatchInput []BatchInputItem
 type BatchInputItem struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
-	ShortId       string `json:"-"`
+	ShortID       string `json:"-"`
 }
 
 var ErrUniqueViolation = errors.New("long URL already exist")
@@ -116,7 +116,7 @@ func (d *T) Flush(ctx context.Context, userID string, data BatchInput) error {
 	}
 
 	for _, v := range data {
-		if _, err = tx.Exec(ctx, stmt.Name, userID, v.ShortId, v.OriginalURL); err != nil {
+		if _, err = tx.Exec(ctx, stmt.Name, userID, v.ShortID, v.OriginalURL); err != nil {
 			if err = tx.Rollback(ctx); err != nil {
 				return fmt.Errorf("unable to rollback: %w", err)
 			}

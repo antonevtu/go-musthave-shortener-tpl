@@ -27,7 +27,7 @@ type BatchInputItem struct {
 	ShortPath     string `json:"-"`
 }
 
-var UniqueViolationError = errors.New("long URL already exist")
+var ErrUniqueViolation = errors.New("long URL already exist")
 
 func New(ctx context.Context, url string) (T, error) {
 	var pool T
@@ -58,15 +58,7 @@ func (d *T) AddEntity(ctx context.Context, e Entity) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		if pgErr.Code == pgerrcode.UniqueViolation {
-			return UniqueViolationError
-
-			//// Запрос short_path по существующему long_url
-			//row := d.Pool.QueryRow(ctx, "select short_path from urls where long_url = $1", e.URL)
-			//err = row.Scan(&shortPath)
-			//if err != nil {
-			//	return false, shortPath, err
-			//}
-			//return true, shortPath, nil
+			return ErrUniqueViolation
 		}
 	}
 	return err

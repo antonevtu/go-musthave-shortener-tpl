@@ -67,7 +67,7 @@ func handlerShortenURLJSONAPI(repo Repositorier, baseURL string) http.HandlerFun
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
 		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL.URL})
-		if errors.Is(err, db.UniqueViolationError) {
+		if errors.Is(err, db.ErrUniqueViolation) {
 			id, err = repo.SelectByLongURL(ctx, longURL.URL)
 			statusCode = http.StatusConflict
 		}
@@ -117,7 +117,7 @@ func handlerShortenURL(repo Repositorier, baseURL string) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), timeout*time.Second)
 		defer cancel()
 		err = repo.AddEntity(ctx, db.Entity{UserID: userID.String(), ID: id, URL: longURL})
-		if errors.Is(err, db.UniqueViolationError) {
+		if errors.Is(err, db.ErrUniqueViolation) {
 			id, err = repo.SelectByLongURL(ctx, longURL)
 			statusCode = http.StatusConflict
 		}

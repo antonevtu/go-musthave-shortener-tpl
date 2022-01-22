@@ -1,10 +1,23 @@
 package handlers
 
 import (
+	"context"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+type Repositorier interface {
+	AddEntity(ctx context.Context, entity db.Entity) error
+	SelectByLongURL(ctx context.Context, longURL string) (db.Entity, error)
+	SelectByShortID(ctx context.Context, shortURL string) (db.Entity, error)
+	SelectByUser(ctx context.Context, userID string) ([]db.Entity, error)
+	AddEntityBatch(ctx context.Context, userID string, input db.BatchInput) error
+	Ping(ctx context.Context) error
+	SetDeletedBatch(ctx context.Context, userID string, shortIDs []string) error
+	SetDeleted(ctx context.Context, item cfg.ToDeleteItem) error
+}
 
 func NewRouter(repo Repositorier, cfgApp cfg.Config) chi.Router {
 	// Определяем роутер chi

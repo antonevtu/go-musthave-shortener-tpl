@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"io"
 	"os"
@@ -118,4 +119,12 @@ func (r *Repository) AddEntityBatch(_ context.Context, _ string, _ db.BatchInput
 
 func (r *Repository) Ping(_ context.Context) error {
 	return errors.New("ping not supported")
+}
+
+func (r *Repository) SetDeletedBatch(ctx context.Context, userID string, shortIDs []string) error {
+	return errors.New("method not supported")
+}
+
+func (r *Repository) SetDeleted(ctx context.Context, item cfg.ToDeleteItem) error {
+	return errors.New("method not supported")
 }

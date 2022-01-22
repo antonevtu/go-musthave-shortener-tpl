@@ -12,16 +12,6 @@ import (
 	"time"
 )
 
-type Repositorier interface {
-	AddEntity(ctx context.Context, entity db.Entity) error
-	SelectByLongURL(ctx context.Context, longURL string) (db.Entity, error)
-	SelectByShortID(ctx context.Context, shortURL string) (db.Entity, error)
-	SelectByUser(ctx context.Context, userID string) ([]db.Entity, error)
-	AddEntityBatch(ctx context.Context, userID string, input db.BatchInput) error
-	Ping(ctx context.Context) error
-	SetDeletedBatch(ctx context.Context, userID string, shortIDs []string) error
-}
-
 type requestURL struct {
 	URL string `json:"url"`
 }

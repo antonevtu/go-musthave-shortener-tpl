@@ -18,6 +18,10 @@ import (
 )
 
 type shortIDList []string
+type ToDeleteItem struct {
+	UserID  string
+	ShortID string
+}
 
 func TestDBDeleteBatch(t *testing.T) {
 	cfgApp := cfg.Config{
@@ -27,12 +31,15 @@ func TestDBDeleteBatch(t *testing.T) {
 		DatabaseDSN:     *DatabaseDSN,
 		CtxTimeout:      *CtxTimeout,
 	}
+	cfgApp.ToDeleteChan = make(chan cfg.ToDeleteItem, 1000)
 
 	dbPool, err := db.New(context.Background(), *DatabaseDSN)
 	assert.Equal(t, err, nil)
 	r := handlers.NewRouter(&dbPool, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
+
+	go deleteLoop(context.Background(), &dbPool, cfgApp.ToDeleteChan)
 
 	// запись в БД
 	batch := make(batchInput, 3)

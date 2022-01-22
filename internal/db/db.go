@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -153,5 +154,11 @@ func (d *T) SetDeletedBatch(ctx context.Context, userID string, shortIDs []strin
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("unable to commit: %w", err)
 	}
+	return err
+}
+
+func (d *T) SetDeleted(ctx context.Context, item cfg.ToDeleteItem) error {
+	sql := "update urls set deleted = true where short_id = $1 and user_id = $2"
+	_, err := d.Pool.Exec(ctx, sql, item.ShortID, item.UserID)
 	return err
 }

@@ -38,6 +38,9 @@ func Run() {
 	}
 	defer repo.Close()
 
+	// delete thread
+	go deleteLoop(ctx, &dbPool, cfgApp.ToDeleteChan)
+
 	//r := handlers.NewRouter(repo, cfgApp)
 	r := handlers.NewRouter(&dbPool, cfgApp)
 	httpServer := &http.Server{
@@ -73,5 +76,16 @@ func Run() {
 		log.Printf("shutdown error: %v\n", err)
 	} else {
 		log.Printf("gracefully stopped\n")
+	}
+}
+
+func deleteLoop(ctx context.Context, repo handlers.Repositorier, input chan cfg.ToDeleteItem) {
+	for {
+		select {
+		case item := <-input:
+			_ = repo.SetDeleted(ctx, item)
+		case <-ctx.Done():
+			return
+		}
 	}
 }

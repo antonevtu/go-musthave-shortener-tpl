@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"io"
@@ -12,11 +11,12 @@ type shortIDList []string
 
 func handlerDelete(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
+		userIDBytes, err := getUserID(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		userID := userIDBytes.String()
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -31,15 +31,16 @@ func handlerDelete(repo Repositorier, cfgApp cfg.Config) http.HandlerFunc {
 			return
 		}
 
-		_ = userID
+		//sequentialDelete(repo, userID.String(), shortIDs)
 
-		sequentalDelete(repo, userID.String(), shortIDs)
+		for _, shortID := range shortIDs {
+			cfgApp.ToDeleteChan <- cfg.ToDeleteItem{UserID: userID, ShortID: shortID}
+		}
 
 		w.WriteHeader(http.StatusAccepted)
-		return
 	}
 }
 
-func sequentalDelete(repo Repositorier, userID string, shortIDs shortIDList) {
-	repo.SetDeletedBatch(context.Background(), userID, shortIDs)
-}
+//func sequentialDelete(repo Repositorier, userID string, shortIDs shortIDList) {
+//	repo.SetDeletedBatch(context.Background(), userID, shortIDs)
+//}

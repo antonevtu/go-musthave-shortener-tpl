@@ -81,18 +81,18 @@ func (r *Repository) AddEntity(_ context.Context, entity db.Entity) error {
 	return err
 }
 
-func (r *Repository) SelectByLongURL(_ context.Context, id string) (string, error) {
-	return "", errors.New("method not supported")
+func (r *Repository) SelectByLongURL(_ context.Context, id string) (db.Entity, error) {
+	return db.Entity{}, errors.New("method not supported")
 }
 
-func (r *Repository) SelectByShortID(_ context.Context, id string) (string, error) {
+func (r *Repository) SelectByShortID(_ context.Context, id string) (db.Entity, error) {
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 	entity, ok := r.storage[id]
 	if ok {
-		return entity.LongURL, nil
+		return entity, nil
 	} else {
-		return "", errors.New("a non-existent ID was requested")
+		return db.Entity{}, errors.New("a non-existent ID was requested")
 	}
 }
 
@@ -112,7 +112,7 @@ func (r *Repository) Close() {
 	_ = r.fileWriter.file.Close()
 }
 
-func (r *Repository) Flush(_ context.Context, _ string, _ db.BatchInput) error {
+func (r *Repository) AddEntityBatch(_ context.Context, _ string, _ db.BatchInput) error {
 	return errors.New("batches not supported")
 }
 

@@ -28,6 +28,7 @@ func NewRouter(repo Repositorier, cfgApp cfg.Config) chi.Router {
 		r.Get("/user/urls", handlerUserHistory(repo, cfgApp))
 		r.Get("/ping", handlerPingDB(repo))
 		r.Post("/api/shorten/batch", handlerShortenURLAPIBatch(repo, cfgApp))
+		r.Delete("/api/user/urls", handlerDelete(repo, cfgApp))
 	})
 	return r
 }

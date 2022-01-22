@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 )
 
 type shortIDList []string
@@ -76,6 +77,7 @@ func TestDBDeleteBatch(t *testing.T) {
 	err = resp1.Body.Close()
 	require.NoError(t, err)
 	require.Equal(t, http.StatusAccepted, resp1.StatusCode)
+	time.Sleep(time.Second)
 }
 
 func testEncodeJSONDeleteList(s shortIDList) *bytes.Buffer {

@@ -78,10 +78,10 @@ func Run() {
 	}
 	cancel()
 
-	gracefullCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+	gracefulCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelShutdown()
 
-	if err = httpServer.Shutdown(gracefullCtx); err != nil {
+	if err = httpServer.Shutdown(gracefulCtx); err != nil {
 		log.Printf("shutdown error: %v\n", err)
 	} else {
 		log.Printf("web server gracefully stopped\n")

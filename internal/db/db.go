@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
+	"log"
 )
 
 type T struct {
@@ -156,5 +157,6 @@ func (d *T) SetDeletedBatch(ctx context.Context, userID string, shortIDs []strin
 func (d *T) SetDeleted(ctx context.Context, item pool.ToDeleteItem) error {
 	sql := "update urls set deleted = true where short_id = $1 and user_id = $2"
 	_, err := d.Pool.Exec(ctx, sql, item.ShortID, item.UserID)
+	log.Println("setDeleted", item.ShortID, item.UserID)
 	return err
 }

@@ -36,7 +36,7 @@ func New(ctx context.Context, repo Deleter) DeleterPoolT {
 }
 
 func (p DeleterPoolT) Run(repo Deleter) {
-	numWorkers := 10
+	numWorkers := 8
 
 	for i := 0; i < numWorkers; i++ {
 		p.g.Go(func() error {

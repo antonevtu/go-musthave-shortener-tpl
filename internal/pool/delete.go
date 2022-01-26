@@ -44,6 +44,9 @@ func (p DeleterPoolT) Run(repo Deleter) {
 				select {
 				case item := <-p.Input:
 					err := repo.SetDeleted(p.ctx, item)
+					if err != nil {
+						log.Println(err)
+					}
 					return err
 				case <-p.ctx.Done():
 					//log.Println("deleter worker has stopped")

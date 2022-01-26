@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -107,6 +107,7 @@ func (d *T) AddEntityBatch(ctx context.Context, userID string, data BatchInput) 
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(ctx)
 
 	stmt, err := tx.Prepare(ctx, "batch", "insert into urls(deleted, user_id, short_id, long_url) VALUES($1, $2, $3, $4)")
 	if err != nil {
@@ -115,9 +116,6 @@ func (d *T) AddEntityBatch(ctx context.Context, userID string, data BatchInput) 
 
 	for _, v := range data {
 		if _, err = tx.Exec(ctx, stmt.Name, v.Deleted, userID, v.ShortID, v.OriginalURL); err != nil {
-			if err = tx.Rollback(ctx); err != nil {
-				return fmt.Errorf("unable to rollback: %w", err)
-			}
 			return err
 		}
 	}
@@ -133,6 +131,7 @@ func (d *T) SetDeletedBatch(ctx context.Context, userID string, shortIDs []strin
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(ctx)
 
 	sql := "update urls set deleted = true where short_id = $1 and user_id = $2"
 
@@ -144,9 +143,6 @@ func (d *T) SetDeletedBatch(ctx context.Context, userID string, shortIDs []strin
 	for _, shortID := range shortIDs {
 		_, err = tx.Exec(ctx, stmt.Name, shortID, userID)
 		if err != nil {
-			if err = tx.Rollback(ctx); err != nil {
-				return fmt.Errorf("unable to rollback: %w", err)
-			}
 			return err
 		}
 	}
@@ -157,7 +153,7 @@ func (d *T) SetDeletedBatch(ctx context.Context, userID string, shortIDs []strin
 	return err
 }
 
-func (d *T) SetDeleted(ctx context.Context, item cfg.ToDeleteItem) error {
+func (d *T) SetDeleted(ctx context.Context, item pool.ToDeleteItem) error {
 	sql := "update urls set deleted = true where short_id = $1 and user_id = $2"
 	_, err := d.Pool.Exec(ctx, sql, item.ShortID, item.UserID)
 	return err

@@ -3,6 +3,7 @@ package cfg
 import (
 	"flag"
 	"fmt"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
 	"github.com/caarlos0/env/v6"
 	"strconv"
 )
@@ -13,13 +14,7 @@ type Config struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"./storage.txt"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	CtxTimeout      int64  `env:"CTX_TIMEOUT" envDefault:"5"`
-	ToDeleteChan    chan ToDeleteItem
-	Done            chan struct{}
-}
-
-type ToDeleteItem struct {
-	UserID  string
-	ShortID string
+	DeleterChan     chan pool.ToDeleteItem
 }
 
 func New() (Config, error) {
@@ -59,7 +54,5 @@ func New() (Config, error) {
 
 	flag.Parse()
 
-	cfg.ToDeleteChan = make(chan ToDeleteItem, 1000)
-	cfg.Done = make(chan struct{})
 	return cfg, err
 }

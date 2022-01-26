@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
 	"io"
 	"os"
 	"sync"
@@ -125,6 +125,6 @@ func (r *Repository) SetDeletedBatch(ctx context.Context, userID string, shortID
 	return errors.New("method not supported")
 }
 
-func (r *Repository) SetDeleted(ctx context.Context, item cfg.ToDeleteItem) error {
+func (r *Repository) SetDeleted(ctx context.Context, item pool.ToDeleteItem) error {
 	return errors.New("method not supported")
 }

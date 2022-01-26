@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -16,7 +17,7 @@ type Repositorier interface {
 	AddEntityBatch(ctx context.Context, userID string, input db.BatchInput) error
 	Ping(ctx context.Context) error
 	SetDeletedBatch(ctx context.Context, userID string, shortIDs []string) error
-	SetDeleted(ctx context.Context, item cfg.ToDeleteItem) error
+	SetDeleted(ctx context.Context, item pool.ToDeleteItem) error
 }
 
 func NewRouter(repo Repositorier, cfgApp cfg.Config) chi.Router {

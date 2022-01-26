@@ -5,6 +5,7 @@ import (
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"log"
 	"net"
@@ -31,18 +32,22 @@ func Run() {
 	}
 	defer dbPool.Close()
 
-	// repository
-	repo, err := repository.New(cfgApp.FileStoragePath)
+	// file&map repository
+	fileRepo, err := repository.New(cfgApp.FileStoragePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer repo.Close()
+	defer fileRepo.Close()
 
-	// delete thread
-	go deleteLoop(ctx, &dbPool, cfgApp.ToDeleteChan)
+	repo := &dbPool
+
+	// repository pool for delete items (set flag "deleted")
+	deleterPool := pool.New(ctx, repo)
+	defer deleterPool.Close()
+	cfgApp.DeleterChan = deleterPool.Input
 
 	//r := handlers.NewRouter(repo, cfgApp)
-	r := handlers.NewRouter(&dbPool, cfgApp)
+	r := handlers.NewRouter(repo, cfgApp)
 	httpServer := &http.Server{
 		Addr:        cfgApp.ServerAddress,
 		Handler:     r,
@@ -65,9 +70,13 @@ func Run() {
 		syscall.SIGQUIT, // kill -SIGQUIT XXXX
 	)
 
-	<-signalChan
+	select {
+	case <-signalChan:
+		log.Println("os.Interrupt - shutting down...")
+	case err := <-deleterPool.ErrCh:
+		log.Println(err)
+	}
 	cancel()
-	log.Print("os.Interrupt - shutting down...\n")
 
 	gracefullCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelShutdown()
@@ -75,17 +84,26 @@ func Run() {
 	if err = httpServer.Shutdown(gracefullCtx); err != nil {
 		log.Printf("shutdown error: %v\n", err)
 	} else {
-		log.Printf("gracefully stopped\n")
+		log.Printf("web server gracefully stopped\n")
 	}
 }
 
-func deleteLoop(ctx context.Context, repo handlers.Repositorier, input chan cfg.ToDeleteItem) {
-	for {
-		select {
-		case item := <-input:
-			_ = repo.SetDeleted(ctx, item)
-		case <-ctx.Done():
-			return
-		}
-	}
-}
+//func deleteThread(ctx context.Context, repo handlers.Repositorier, input chan cfg.ToDeleteItem) {
+//	const nWorkers = 10
+//	wg := sync.WaitGroup{}
+//	for i := 0; i < nWorkers; i++ {
+//		wg.Add(1)
+//		go deleteWorker(ctx, repo, input, wg)
+//	}
+//}
+//
+//func deleteWorker(ctx context.Context, repo handlers.Repositorier, input chan cfg.ToDeleteItem, wg sync.WaitGroup) {
+//	for {
+//		select {
+//		case item := <-input:
+//			_ = repo.SetDeleted(ctx, item)
+//		case <-ctx.Done():
+//			return
+//		}
+//	}
+//}

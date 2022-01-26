@@ -13,7 +13,7 @@ type Config struct {
 	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"./storage.txt"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
-	CtxTimeout      int64  `env:"CTX_TIMEOUT" envDefault:"5"`
+	CtxTimeout      int64  `env:"CTX_TIMEOUT" envDefault:"500"`
 	DeleterChan     chan pool.ToDeleteItem
 }
 

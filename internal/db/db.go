@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
-	"log"
 )
 
 type T struct {
@@ -103,6 +102,30 @@ func (d *T) SelectByUser(ctx context.Context, userID string) ([]Entity, error) {
 	return eArray, nil
 }
 
+//func (d *T) AddEntityBatch(ctx context.Context, userID string, data BatchInput) error {
+//	tx, err := d.Begin(ctx)
+//	if err != nil {
+//		return err
+//	}
+//	defer tx.Rollback(ctx)
+//
+//	stmt, err := tx.Prepare(ctx, "batch", "insert into urls(deleted, user_id, short_id, long_url) VALUES($1, $2, $3, $4)")
+//	if err != nil {
+//		return err
+//	}
+//
+//	for _, v := range data {
+//		if _, err = tx.Exec(ctx, stmt.Name, v.Deleted, userID, v.ShortID, v.OriginalURL); err != nil {
+//			return err
+//		}
+//	}
+//
+//	if err := tx.Commit(ctx); err != nil {
+//		return fmt.Errorf("unable to commit: %w", err)
+//	}
+//	return err
+//}
+
 func (d *T) AddEntityBatch(ctx context.Context, userID string, data BatchInput) error {
 	tx, err := d.Begin(ctx)
 	if err != nil {
@@ -110,7 +133,7 @@ func (d *T) AddEntityBatch(ctx context.Context, userID string, data BatchInput) 
 	}
 	defer tx.Rollback(ctx)
 
-	stmt, err := tx.Prepare(ctx, "batch", "insert into urls(deleted, user_id, short_id, long_url) VALUES($1, $2, $3, $4)")
+	stmt, err := tx.Prepare(ctx, "batch", "insert into urls values (default, $1, $2, $3, $4)")
 	if err != nil {
 		return err
 	}
@@ -157,6 +180,5 @@ func (d *T) SetDeletedBatch(ctx context.Context, userID string, shortIDs []strin
 func (d *T) SetDeleted(ctx context.Context, item pool.ToDeleteItem) error {
 	sql := "update urls set deleted = true where short_id = $1 and user_id = $2"
 	_, err := d.Pool.Exec(ctx, sql, item.ShortID, item.UserID)
-	log.Println("setDeleted", item.ShortID, item.UserID)
 	return err
 }

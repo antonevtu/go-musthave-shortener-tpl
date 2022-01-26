@@ -36,7 +36,7 @@ func New(ctx context.Context, repo Deleter) DeleterPoolT {
 }
 
 func (p DeleterPoolT) Run(repo Deleter) {
-	numWorkers := 1
+	numWorkers := 4
 
 	for i := 0; i < numWorkers; i++ {
 		p.g.Go(func() error {
@@ -44,8 +44,9 @@ func (p DeleterPoolT) Run(repo Deleter) {
 				select {
 				case item := <-p.Input:
 					err := repo.SetDeleted(p.ctx, item)
-					log.Println(err)
-					return err
+					if err != nil {
+						return err
+					}
 				case <-p.ctx.Done():
 					//log.Println("deleter worker has stopped")
 					return nil

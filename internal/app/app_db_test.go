@@ -1,22 +1,5 @@
 package app
 
-import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
-	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"testing"
-)
-
 type batchInput []batchInputItem
 type batchInputItem struct {
 	CorrelationID string `json:"correlation_id"`
@@ -28,7 +11,7 @@ type batchOutputItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
-///*
+/*
 func TestDBBatch(t *testing.T) {
 	cfgApp := cfg.Config{
 		ServerAddress:   *ServerAddress,

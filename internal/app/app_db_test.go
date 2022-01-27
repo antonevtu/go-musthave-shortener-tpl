@@ -1,5 +1,6 @@
 package app
 
+/*
 type batchInput []batchInputItem
 type batchInputItem struct {
 	CorrelationID string `json:"correlation_id"`
@@ -11,7 +12,7 @@ type batchOutputItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
-/*
+
 func TestDBBatch(t *testing.T) {
 	cfgApp := cfg.Config{
 		ServerAddress:   *ServerAddress,

@@ -1,8 +1,23 @@
 package app
 
+/*
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"testing"
+	"time"
 )
 
 type shortIDList []string
@@ -11,7 +26,7 @@ type ToDeleteItem struct {
 	ShortID string
 }
 
-/*
+
 func TestDBDeleteBatch(t *testing.T) {
 	cfgApp := cfg.Config{
 		ServerAddress:   *ServerAddress,
@@ -67,7 +82,7 @@ func TestDBDeleteBatch(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, resp1.StatusCode)
 	time.Sleep(time.Second)
 }
-*/
+
 func testEncodeJSONDeleteList(s shortIDList) *bytes.Buffer {
 	buf := bytes.NewBuffer([]byte{})
 	encoder := json.NewEncoder(buf)
@@ -75,3 +90,4 @@ func testEncodeJSONDeleteList(s shortIDList) *bytes.Buffer {
 	_ = encoder.Encode(s)
 	return buf
 }
+*/

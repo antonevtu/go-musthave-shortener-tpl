@@ -26,10 +26,12 @@ type Deleter interface {
 func New(ctx context.Context, repo Deleter) DeleterPoolT {
 	input := make(chan ToDeleteItem, 1000)
 	g, ctx := errgroup.WithContext(ctx)
+	errCh := make(chan error)
 	pool := DeleterPoolT{
 		Input: input,
 		g:     g,
 		ctx:   ctx,
+		ErrCh: errCh,
 	}
 	go pool.Run(repo)
 	return pool
@@ -59,10 +61,6 @@ func (p DeleterPoolT) Run(repo Deleter) {
 		p.ErrCh <- fmt.Errorf("error in deleter pool: %w", err)
 	}
 }
-
-//func (p DeleterPoolT) InputChan() chan ToDeleteItem {
-//	return p.Input
-//}
 
 func (p DeleterPoolT) Close() {
 	_ = p.g.Wait()

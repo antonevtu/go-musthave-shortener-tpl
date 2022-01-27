@@ -87,23 +87,3 @@ func Run() {
 		log.Printf("web server gracefully stopped\n")
 	}
 }
-
-//func deleteThread(ctx context.Context, repo handlers.Repositorier, input chan cfg.ToDeleteItem) {
-//	const nWorkers = 10
-//	wg := sync.WaitGroup{}
-//	for i := 0; i < nWorkers; i++ {
-//		wg.Add(1)
-//		go deleteWorker(ctx, repo, input, wg)
-//	}
-//}
-//
-//func deleteWorker(ctx context.Context, repo handlers.Repositorier, input chan cfg.ToDeleteItem, wg sync.WaitGroup) {
-//	for {
-//		select {
-//		case item := <-input:
-//			_ = repo.SetDeleted(ctx, item)
-//		case <-ctx.Done():
-//			return
-//		}
-//	}
-//}

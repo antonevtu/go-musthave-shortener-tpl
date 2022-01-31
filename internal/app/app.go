@@ -39,8 +39,8 @@ func Run() {
 	}
 	defer fileRepo.Close()
 
-	//repo := &dbPool
-	repo := fileRepo
+	repo := &dbPool
+	//repo := fileRepo
 
 	// repository pool for delete items (set flag "deleted")
 	deleterPool := pool.New(ctx, repo)

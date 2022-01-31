@@ -1,6 +1,5 @@
 package app
 
-///*
 import (
 	"bytes"
 	"compress/gzip"
@@ -266,5 +265,3 @@ func testDecodeJSONShortURL(t *testing.T, js string) string {
 	require.NoError(t, err)
 	return url_.Result
 }
-
-//*/

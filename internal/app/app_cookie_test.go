@@ -1,5 +1,6 @@
 package app
 
+///*
 import (
 	"bytes"
 	"compress/gzip"
@@ -148,3 +149,5 @@ func testGZipRequestCookie204(t *testing.T, url, method string, body io.Reader, 
 
 	return resp
 }
+
+//*/

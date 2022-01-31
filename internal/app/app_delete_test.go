@@ -1,6 +1,5 @@
 package app
 
-/*
 import (
 	"bytes"
 	"context"
@@ -10,7 +9,6 @@ import (
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
 	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
@@ -26,7 +24,7 @@ type ToDeleteItem struct {
 	ShortID string
 }
 
-
+///*
 func TestDBDeleteBatch(t *testing.T) {
 	cfgApp := cfg.Config{
 		ServerAddress:   *ServerAddress,
@@ -36,14 +34,36 @@ func TestDBDeleteBatch(t *testing.T) {
 		CtxTimeout:      *CtxTimeout,
 	}
 
-	dbPool, err := db.New(context.Background(), *DatabaseDSN)
-	assert.Equal(t, err, nil)
+	// локальная БД
+	//dbPool, err := db.New(context.Background(), *DatabaseDSN)
+	//assert.Equal(t, err, nil)
+
+	// БД в контейнере
+	var dbPool db.T
+	ctx := context.Background()
+	container, db, err := CreateTestContainer(ctx, "pg")
+	require.NoError(t, err)
+	defer db.Close()
+	defer container.Terminate(ctx)
+	dbPool.Pool = db
+
+	// пул горутин на удаление записей
 	deleterPool := pool.New(context.Background(), &dbPool)
 	//defer deleterPool.Close()
 	cfgApp.DeleterChan = deleterPool.Input
 	r := handlers.NewRouter(&dbPool, cfgApp)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
+
+	// создание таблицы
+	sql1 := "create table if not exists urls (" +
+		"id serial primary key, " +
+		"deleted boolean not null," +
+		"user_id varchar(512) not null, " +
+		"short_id varchar(512) not null unique, " +
+		"long_url varchar(1024) not null unique)"
+	_, err = dbPool.Exec(ctx, sql1)
+	require.NoError(t, err)
 
 	// запись в БД
 	batch := make(batchInput, 3)
@@ -90,4 +110,5 @@ func testEncodeJSONDeleteList(s shortIDList) *bytes.Buffer {
 	_ = encoder.Encode(s)
 	return buf
 }
-*/
+
+//*/

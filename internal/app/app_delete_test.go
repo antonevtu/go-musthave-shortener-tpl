@@ -1,36 +1,24 @@
 package app
 
-//
-//import (
-//	"bytes"
-//	"context"
-//	"encoding/json"
-//	"fmt"
-//	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
-//	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
-//	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
-//	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
-//	"github.com/docker/go-connections/nat"
-//	"github.com/google/uuid"
-//	"github.com/jackc/pgx/v4/pgxpool"
-//	"github.com/stretchr/testify/require"
-//	"github.com/testcontainers/testcontainers-go"
-//	"github.com/testcontainers/testcontainers-go/wait"
-//	"io/ioutil"
-//	"log"
-//	"net/http"
-//	"net/http/httptest"
-//	"net/url"
-//	"testing"
-//	"time"
-//)
-//
-//type shortIDList []string
-//type ToDeleteItem struct {
-//	UserID  string
-//	ShortID string
-//}
-//
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/docker/go-connections/nat"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"log"
+	"time"
+)
+
+type shortIDList []string
+type ToDeleteItem struct {
+	UserID  string
+	ShortID string
+}
+
 //func _TestDBDeleteBatch(t *testing.T) {
 //	cfgApp := cfg.Config{
 //		ServerAddress:   *ServerAddress,
@@ -108,55 +96,55 @@ package app
 //	require.Equal(t, http.StatusAccepted, resp1.StatusCode)
 //	time.Sleep(time.Second)
 //}
-//
-//func testEncodeJSONDeleteList(s shortIDList) *bytes.Buffer {
-//	buf := bytes.NewBuffer([]byte{})
-//	encoder := json.NewEncoder(buf)
-//	encoder.SetEscapeHTML(false) // без этой опции символ '&' будет заменён на "\u0026"
-//	_ = encoder.Encode(s)
-//	return buf
-//}
-//
-//func CreateTestContainer(ctx context.Context, dbname string) (testcontainers.Container, *pgxpool.Pool, error) {
-//	var env = map[string]string{
-//		"POSTGRES_PASSWORD": "password",
-//		"POSTGRES_USER":     "postgres",
-//		"POSTGRES_DB":       dbname,
-//	}
-//	var port = "5432/tcp"
-//	dbURL := func(port nat.Port) string {
-//		return fmt.Sprintf("postgres://postgres:password@localhost:%s/%s?sslmode=disable", port.Port(), dbname)
-//	}
-//
-//	req := testcontainers.GenericContainerRequest{
-//		ContainerRequest: testcontainers.ContainerRequest{
-//			Image:        "postgres:latest",
-//			ExposedPorts: []string{port},
-//			Cmd:          []string{"postgres", "-c", "fsync=off"},
-//			Env:          env,
-//			WaitingFor:   wait.ForSQL(nat.Port(port), "postgres", dbURL).Timeout(time.Second * 100),
-//		},
-//		Started: true,
-//	}
-//	container, err := testcontainers.GenericContainer(ctx, req)
-//	if err != nil {
-//		return container, nil, fmt.Errorf("failed to start container: %s", err)
-//	}
-//
-//	mappedPort, err := container.MappedPort(ctx, nat.Port(port))
-//	if err != nil {
-//		return container, nil, fmt.Errorf("failed to get container external port: %s", err)
-//	}
-//
-//	log.Println("postgres container ready and running at port: ", mappedPort)
-//
-//	urlS := fmt.Sprintf("postgres://postgres:password@localhost:%s/%s?sslmode=disable", mappedPort.Port(), dbname)
-//
-//	db1, err := pgxpool.Connect(ctx, urlS)
-//	//db, err := sql.Open("postgres", url)
-//	if err != nil {
-//		return container, db1, fmt.Errorf("failed to establish database connection: %s", err)
-//	}
-//
-//	return container, db1, nil
-//}
+
+func testEncodeJSONDeleteList(s shortIDList) *bytes.Buffer {
+	buf := bytes.NewBuffer([]byte{})
+	encoder := json.NewEncoder(buf)
+	encoder.SetEscapeHTML(false) // без этой опции символ '&' будет заменён на "\u0026"
+	_ = encoder.Encode(s)
+	return buf
+}
+
+func CreateTestContainer(ctx context.Context, dbname string) (testcontainers.Container, *pgxpool.Pool, error) {
+	var env = map[string]string{
+		"POSTGRES_PASSWORD": "password",
+		"POSTGRES_USER":     "postgres",
+		"POSTGRES_DB":       dbname,
+	}
+	var port = "5432/tcp"
+	dbURL := func(port nat.Port) string {
+		return fmt.Sprintf("postgres://postgres:password@localhost:%s/%s?sslmode=disable", port.Port(), dbname)
+	}
+
+	req := testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        "postgres:latest",
+			ExposedPorts: []string{port},
+			Cmd:          []string{"postgres", "-c", "fsync=off"},
+			Env:          env,
+			WaitingFor:   wait.ForSQL(nat.Port(port), "postgres", dbURL).Timeout(time.Second * 100),
+		},
+		Started: true,
+	}
+	container, err := testcontainers.GenericContainer(ctx, req)
+	if err != nil {
+		return container, nil, fmt.Errorf("failed to start container: %s", err)
+	}
+
+	mappedPort, err := container.MappedPort(ctx, nat.Port(port))
+	if err != nil {
+		return container, nil, fmt.Errorf("failed to get container external port: %s", err)
+	}
+
+	log.Println("postgres container ready and running at port: ", mappedPort)
+
+	urlS := fmt.Sprintf("postgres://postgres:password@localhost:%s/%s?sslmode=disable", mappedPort.Port(), dbname)
+
+	db1, err := pgxpool.Connect(ctx, urlS)
+	//db, err := sql.Open("postgres", url)
+	if err != nil {
+		return container, db1, fmt.Errorf("failed to establish database connection: %s", err)
+	}
+
+	return container, db1, nil
+}

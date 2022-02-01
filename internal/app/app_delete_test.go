@@ -105,7 +105,7 @@ func testEncodeJSONDeleteList(s shortIDList) *bytes.Buffer {
 	return buf
 }
 
-func CreateTestContainer(ctx context.Context, dbname string) (testcontainers.Container, *pgxpool.Pool, error) {
+func createTestContainer(ctx context.Context, dbname string) (testcontainers.Container, *pgxpool.Pool, error) {
 	var env = map[string]string{
 		"POSTGRES_PASSWORD": "password",
 		"POSTGRES_USER":     "postgres",

@@ -1,103 +1,90 @@
 package app
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"io"
+	"context"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/cfg"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/db"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/handlers"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/pool"
+	"github.com/antonevtu/go-musthave-shortener-tpl/internal/repository"
 	"log"
-	"math/rand"
+	"net"
 	"net/http"
-	"sync"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
-const addr = "localhost:8080"
-const idLen = 5
-
-type Storage map[string]string
-
-var storageLock sync.Mutex
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-
 func Run() {
-	storage := make(Storage, 100)
-	r := NewRouter(storage)
-	log.Fatal(http.ListenAndServe(addr, r))
-}
-
-func NewRouter(base Storage) chi.Router {
-	// Определяем роутер chi
-	r := chi.NewRouter()
-
-	// зададим встроенные middleware, чтобы улучшить стабильность приложения
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	// создадим суброутер, который будет содержать две функции
-	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlerShortenURL(base))
-		r.Get("/{id}", handlerRecoverURL(base))
-	})
-	return r
-}
-
-func handlerShortenURL(base Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		urlString := string(body)
-
-		id := shortenURL(urlString, base)
-		shortURL := "http://" + r.Host + "/" + id
-
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(shortURL))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	var cfgApp, err = cfg.New()
+	if err != nil {
+		log.Fatal(err)
 	}
-}
 
-func handlerRecoverURL(base Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		storageLock.Lock()
-		defer storageLock.Unlock()
-		id := chi.URLParam(r, "id")
-		longURL, ok := base[id]
-		if !ok {
-			http.Error(w, "А nonexistent ID was requested", http.StatusBadRequest)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// database
+	dbPool, err := db.New(ctx, cfgApp.DatabaseDSN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dbPool.Close()
+
+	// file&map repository
+	fileRepo, err := repository.New(cfgApp.FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fileRepo.Close()
+
+	repo := &dbPool
+	//repo := fileRepo
+
+	// repository pool for delete items (set flag "deleted")
+	deleterPool := pool.New(ctx, repo)
+	defer deleterPool.Close()
+	cfgApp.DeleterChan = deleterPool.Input
+
+	//r := handlers.NewRouter(repo, cfgApp)
+	r := handlers.NewRouter(repo, cfgApp)
+	httpServer := &http.Server{
+		Addr:        cfgApp.ServerAddress,
+		Handler:     r,
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	}
+
+	// Run server
+	go func() {
+		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("HTTP server ListenAndServe: %v", err)
 		}
-		w.Header().Set("Location", longURL)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	}
-}
+	}()
 
-func shortenURL(urlString string, base Storage) (id string) {
-	storageLock.Lock()
-	defer storageLock.Unlock()
-	for {
-		id = randStringRunes(idLen)
-		if _, ok := base[id]; !ok {
-			base[id] = urlString
-			break
-		}
-	}
-	return id
-}
+	signalChan := make(chan os.Signal, 1)
 
-func randStringRunes(n int) string {
-	rand.Seed(time.Now().UnixNano())
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	signal.Notify(
+		signalChan,
+		syscall.SIGHUP,  // kill -SIGHUP XXXX
+		syscall.SIGINT,  // kill -SIGINT XXXX or Ctrl+c
+		syscall.SIGQUIT, // kill -SIGQUIT XXXX
+	)
+
+	select {
+	case <-signalChan:
+		log.Println("os.Interrupt - shutting down...")
+	case err := <-deleterPool.ErrCh:
+		log.Println(err)
 	}
-	return string(b)
+	cancel()
+
+	gracefulCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelShutdown()
+
+	if err = httpServer.Shutdown(gracefulCtx); err != nil {
+		log.Printf("shutdown error: %v\n", err)
+	} else {
+		log.Printf("web server gracefully stopped\n")
+	}
 }

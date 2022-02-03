@@ -30,6 +30,7 @@ type ToDeleteItem struct {
 	ShortID string
 }
 
+// проверка
 func TestDBDeleteBatch(t *testing.T) {
 	cfgApp := cfg.Config{
 		ServerAddress:   *ServerAddress,
